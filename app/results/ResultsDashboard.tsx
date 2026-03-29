@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { AnalyzeResponse, HealthResult, RiskLevel } from "@/types";
+import type {
+  AnalyzeResponse,
+  HealthResult,
+  RiskLevel,
+  ScoreBreakdownResponse,
+} from "@/types";
 
 const RISK_COLORS: Record<RiskLevel, string> = {
   healthy: "text-green-400",
@@ -203,7 +208,7 @@ function ResultRow({
           {result.health_score !== null ? (
             <ScoreBadge score={result.health_score} />
           ) : (
-            <span className="text-gray-600">—</span>
+            <span className="text-gray-600">&mdash;</span>
           )}
         </td>
         <td className="p-3">
@@ -238,10 +243,14 @@ function ResultRow({
           )}
         </td>
       </tr>
-      {expanded && result.signals && (
+      {expanded && (result.signals || result.score_breakdown) && (
         <tr className="border-b border-gray-800/50">
           <td colSpan={5} className="p-4 bg-gray-900/20">
-            <SignalDetails signals={result.signals} />
+            <ExpandedDetails
+              signals={result.signals}
+              breakdown={result.score_breakdown}
+              confidence={result.data_confidence}
+            />
           </td>
         </tr>
       )}
@@ -261,79 +270,260 @@ function ScoreBadge({ score }: { score: number }): React.ReactElement {
   return <span className={`font-bold font-mono ${color}`}>{score}</span>;
 }
 
-// ─── Signal Details ──────────────────────────────────────────────────────────
+// ─── Score Bar ──────────────────────────────────────────────────────────────
 
-function SignalDetails({
-  signals,
+function ScoreBar({
+  score,
+  weight,
+  label,
+  tooltip,
 }: {
-  signals: NonNullable<HealthResult["signals"]>;
+  score: number;
+  weight: string;
+  label: string;
+  tooltip: string;
 }): React.ReactElement {
-  const items = [
-    {
-      label: "Last commit",
-      value:
-        signals.days_since_last_commit !== null
-          ? `${signals.days_since_last_commit}d ago`
-          : "Unknown",
-    },
-    {
-      label: "Last release",
-      value:
-        signals.days_since_last_release !== null
-          ? `${signals.days_since_last_release}d ago`
-          : "Unknown",
-    },
-    {
-      label: "Contributors (90d)",
-      value:
-        signals.contributor_count_90d !== null
-          ? String(signals.contributor_count_90d)
-          : "Unknown",
-    },
-    {
-      label: "PR merge velocity",
-      value:
-        signals.pr_merge_velocity_days !== null
-          ? `${signals.pr_merge_velocity_days}d`
-          : "Unknown",
-    },
-    {
-      label: "Weekly downloads",
-      value:
-        signals.weekly_downloads !== null
-          ? signals.weekly_downloads.toLocaleString()
-          : "Unknown",
-    },
-    {
-      label: "Downloads 12w ago",
-      value:
-        signals.weekly_downloads_12w_ago !== null
-          ? signals.weekly_downloads_12w_ago.toLocaleString()
-          : "Unknown",
-    },
-    {
-      label: "Multiple maintainers",
-      value:
-        signals.has_multiple_maintainers !== null
-          ? signals.has_multiple_maintainers
-            ? "Yes"
-            : "No"
-          : "Unknown",
-    },
-    {
-      label: "Unresolved CVEs",
-      value: String(signals.unresolved_cves),
-    },
-  ];
+  let barColor = "bg-red-400";
+  if (score >= 80) barColor = "bg-green-400";
+  else if (score >= 60) barColor = "bg-blue-400";
+  else if (score >= 40) barColor = "bg-yellow-400";
+  else if (score >= 20) barColor = "bg-orange-400";
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {items.map((item) => (
-        <div key={item.label}>
-          <div className="text-xs text-gray-500">{item.label}</div>
-          <div className="text-sm font-medium">{item.value}</div>
+    <div className="group relative">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-gray-400 cursor-help border-b border-dotted border-gray-600">
+          {label}
+          <span className="text-gray-600 ml-1">{weight}</span>
+        </span>
+        <span className="text-xs font-mono font-medium">{score}</span>
+      </div>
+      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${barColor} transition-all`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      {/* Tooltip */}
+      <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 w-56 leading-relaxed shadow-xl">
+        {tooltip}
+      </div>
+    </div>
+  );
+}
+
+// ─── Expanded Details ───────────────────────────────────────────────────────
+
+function ExpandedDetails({
+  signals,
+  breakdown,
+  confidence,
+}: {
+  signals: HealthResult["signals"];
+  breakdown: HealthResult["score_breakdown"];
+  confidence: HealthResult["data_confidence"];
+}): React.ReactElement {
+  return (
+    <div className="space-y-5">
+      {/* Confidence Banner */}
+      <div className="flex items-center gap-2">
+        <ConfidenceDot confidence={confidence} />
+        <span className="text-xs text-gray-400">
+          Data confidence:{" "}
+          <span
+            className={
+              confidence === "high"
+                ? "text-green-400"
+                : confidence === "low"
+                  ? "text-yellow-400"
+                  : "text-gray-500"
+            }
+          >
+            {confidence}
+          </span>
+          {confidence === "low" && " — no GitHub repo found, npm-only signals"}
+          {confidence === "unavailable" && " — data could not be fetched"}
+        </span>
+      </div>
+
+      {/* Score Breakdown */}
+      {breakdown && (
+        <div>
+          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+            Score Breakdown
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            <ScoreBar
+              score={breakdown.commit_score}
+              weight="25%"
+              label="Commit Activity"
+              tooltip="Is anyone actively committing? Based on days since last commit. Recent commits (< 30d) score 100, > 1 year scores 0."
+            />
+            <ScoreBar
+              score={breakdown.release_score}
+              weight="20%"
+              label="Release Cadence"
+              tooltip="Are fixes reaching published versions? Based on days since last release. Recent release (< 60d) scores 100, > 2 years scores 0."
+            />
+            <ScoreBar
+              score={breakdown.issue_health_score}
+              weight="15%"
+              label="Issue Health"
+              tooltip="Is the maintainer responsive? Measures open vs closed issue ratio. Lower open ratio = healthier project."
+            />
+            <ScoreBar
+              score={breakdown.contributor_score}
+              weight="15%"
+              label="Contributors (90d)"
+              tooltip="Bus factor — is this a single-maintainer project? 0 contributors = 0, 1 = 30 (risk), 5-10 = 85, 10+ = 100."
+            />
+            <ScoreBar
+              score={breakdown.pr_velocity_score}
+              weight="10%"
+              label="PR Velocity"
+              tooltip="How quickly are PRs merged? < 3 days avg = 100, > 90 days = 0. No merged PRs = insufficient data."
+            />
+            <ScoreBar
+              score={breakdown.download_trend_score}
+              weight="10%"
+              label="Download Trend"
+              tooltip="Is the ecosystem migrating away? Compares current week vs 12 weeks ago. Growing > 10% = 100, declining > 30% = 15."
+            />
+            <ScoreBar
+              score={breakdown.maintainer_score}
+              weight="5%"
+              label="Maintainers"
+              tooltip="Multiple maintainers reduce single-point-of-failure risk. Multiple = 100, single = 30."
+            />
+          </div>
+          {breakdown.security_penalty < 1 && (
+            <div className="mt-3 px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
+              <span className="text-xs text-red-400 font-medium">
+                Security penalty: {Math.round(breakdown.security_penalty * 100)}% multiplier
+              </span>
+              <span className="text-xs text-gray-500 ml-2">
+                (unresolved CVEs detected)
+              </span>
+            </div>
+          )}
         </div>
-      ))}
+      )}
+
+      {/* Raw Signals */}
+      {signals && (
+        <div>
+          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+            Raw Signals
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <SignalItem
+              label="Last commit"
+              value={
+                signals.days_since_last_commit !== null
+                  ? `${signals.days_since_last_commit}d ago`
+                  : null
+              }
+            />
+            <SignalItem
+              label="Last release"
+              value={
+                signals.days_since_last_release !== null
+                  ? `${signals.days_since_last_release}d ago`
+                  : null
+              }
+            />
+            <SignalItem
+              label="Contributors (90d)"
+              value={
+                signals.contributor_count_90d !== null
+                  ? String(signals.contributor_count_90d)
+                  : null
+              }
+            />
+            <SignalItem
+              label="PR merge velocity"
+              value={
+                signals.pr_merge_velocity_days !== null
+                  ? `${signals.pr_merge_velocity_days}d avg`
+                  : null
+              }
+            />
+            <SignalItem
+              label="Weekly downloads"
+              value={
+                signals.weekly_downloads !== null
+                  ? signals.weekly_downloads.toLocaleString()
+                  : null
+              }
+            />
+            <SignalItem
+              label="Downloads 12w ago"
+              value={
+                signals.weekly_downloads_12w_ago !== null
+                  ? signals.weekly_downloads_12w_ago.toLocaleString()
+                  : null
+              }
+            />
+            <SignalItem
+              label="Multiple maintainers"
+              value={
+                signals.has_multiple_maintainers !== null
+                  ? signals.has_multiple_maintainers
+                    ? "Yes"
+                    : "No"
+                  : null
+              }
+            />
+            <SignalItem
+              label="Unresolved CVEs"
+              value={String(signals.unresolved_cves)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Confidence Dot ─────────────────────────────────────────────────────────
+
+function ConfidenceDot({
+  confidence,
+}: {
+  confidence: HealthResult["data_confidence"];
+}): React.ReactElement {
+  const color =
+    confidence === "high"
+      ? "bg-green-400"
+      : confidence === "low"
+        ? "bg-yellow-400"
+        : "bg-gray-500";
+
+  return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
+}
+
+// ─── Signal Item with confidence indicator ──────────────────────────────────
+
+function SignalItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}): React.ReactElement {
+  return (
+    <div className="flex items-start gap-1.5">
+      <span
+        className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+          value !== null ? "bg-green-400" : "bg-gray-600"
+        }`}
+      />
+      <div>
+        <div className="text-xs text-gray-500">{label}</div>
+        <div className={`text-sm font-medium ${value === null ? "text-gray-600" : ""}`}>
+          {value ?? "No data"}
+        </div>
+      </div>
     </div>
   );
 }

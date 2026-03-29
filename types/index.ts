@@ -86,6 +86,19 @@ export interface SignalsResponse {
   unresolved_cves: number;
 }
 
+// ─── Score Breakdown (API response shape) ───────────────────────────────────
+
+export interface ScoreBreakdownResponse {
+  commit_score: number;
+  release_score: number;
+  issue_health_score: number;
+  contributor_score: number;
+  pr_velocity_score: number;
+  download_trend_score: number;
+  maintainer_score: number;
+  security_penalty: number;
+}
+
 // ─── Per-Package Health Result ───────────────────────────────────────────────
 
 export interface HealthResult {
@@ -97,6 +110,7 @@ export interface HealthResult {
   reason?: "github_rate_limit" | "not_found" | "timeout";
   retry_after?: string;
   signals?: SignalsResponse;
+  score_breakdown?: ScoreBreakdownResponse;
   github_url: string | null;
   npm_url: string | null;
 }
