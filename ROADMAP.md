@@ -26,10 +26,12 @@
 - [x] Auto-detects dependency files (package.json, requirements.txt, Cargo.toml, go.mod, Gemfile)
 - [x] Example workflow: `.github/workflows/dependency-health.yml`
 
-## v1.5 — Developer Ergonomics
-- VS Code extension — inline health scores in `package.json`
-- Badge generator — `![Health Score](https://dependency-obituary.vercel.app/badge/npm/react)` for READMEs
-- Optional API key system — higher rate limits for CI usage
+## v1.5 — Developer Ergonomics (done)
+- [x] Badge API: `GET /api/badge?ecosystem=npm&package=react` returns SVG badge
+- [x] Badge generator page at `/badge` — pick ecosystem, enter package, copy markdown
+- [x] Link from landing page to badge generator
+- [ ] VS Code extension — deferred (needs separate repo + marketplace publishing)
+- [ ] API key system — deferred (requires auth, needs discussion per CLAUDE.md)
 
 ## v2.0 — Monitoring *(requires user discussion before building)*
 - Opt-in project monitoring — saved package lists, weekly digest email

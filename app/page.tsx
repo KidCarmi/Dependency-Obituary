@@ -145,6 +145,13 @@ export default function HomePage(): React.ReactElement {
           Your file never leaves your browser. We parse it client-side.
         </p>
 
+        <a
+          href="/badge"
+          className="inline-block mt-4 text-xs text-gray-500 hover:text-blue-400 transition-colors"
+        >
+          Want badges for your README? &rarr;
+        </a>
+
         {/* Parsed State */}
         {state.step === "parsed" && (
           <div className="mt-8 space-y-4">
