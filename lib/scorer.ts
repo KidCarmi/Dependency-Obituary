@@ -10,44 +10,7 @@
  *  - Formula weights are defined in SYSTEM_DESIGN.md. Do not change them here.
  */
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface PackageSignals {
-  daysSinceLastCommit: number | null;
-  daysSinceLastRelease: number | null;
-  openIssues: number | null;
-  closedIssues: number | null;
-  contributorCount90d: number | null;
-  prMergeVelocityDays: number | null;
-  weeklyDownloads: number | null;
-  weeklyDownloads12wAgo: number | null;
-  hasMultipleMaintainers: boolean | null;
-  unresolvedCves: number;
-}
-
-export type RiskLevel =
-  | "healthy"
-  | "stable"
-  | "at_risk"
-  | "critical"
-  | "abandoned"
-  | "unknown";
-
-export interface ScoredPackage {
-  healthScore: number;
-  riskLevel: RiskLevel;
-  breakdown: {
-    commitScore: number;
-    releaseScore: number;
-    issueHealthScore: number;
-    contributorScore: number;
-    prVelocityScore: number;
-    downloadTrendScore: number;
-    maintainerScore: number;
-    securityPenalty: number;
-    weightedSum: number;
-  };
-}
+import type { PackageSignals, RiskLevel, ScoredPackage } from "@/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
