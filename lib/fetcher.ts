@@ -25,7 +25,7 @@ import type {
   NpmPackageData,
   PyPIPackageData,
 } from "@/types";
-import { buildCacheKey, getOrFetch, getDynamicTTL } from "@/lib/cache";
+import { buildCacheKey, getDynamicTTL, redis } from "@/lib/cache";
 import {
   fetchRepoMetadata,
   fetchLastCommit,
@@ -62,7 +62,8 @@ function sleep(ms: number): Promise<void> {
 function buildDegradedResult(
   pkg: Package,
   reason: "github_rate_limit" | "not_found" | "timeout",
-  retryAfter?: string
+  retryAfter?: string,
+  npmUrl?: string | null
 ): HealthResult {
   return {
     name: pkg.name,
@@ -73,7 +74,7 @@ function buildDegradedResult(
     reason,
     retry_after: retryAfter,
     github_url: null,
-    npm_url: null,
+    npm_url: npmUrl ?? null,
   };
 }
 
@@ -317,7 +318,7 @@ async function fetchPackageHealth(
             latestRateLimit = result.rateLimit;
           } else if (result.error === "rate_limited") {
             return {
-              result: buildDegradedResult(pkg, "github_rate_limit", result.retryAfter),
+              result: buildDegradedResult(pkg, "github_rate_limit", result.retryAfter, npmUrl),
               rateLimit: latestRateLimit,
             };
           }
@@ -389,29 +390,36 @@ export async function fetchBatched(
       break;
     }
 
-    // Process batch
+    // Process batch concurrently
     const batch = packages.slice(i, i + batchSize);
-    const batchResults: FetchPackageResult[] = [];
 
-    for (const pkg of batch) {
-      const cacheKey = buildCacheKey(ecosystem, pkg.name, pkg.version);
-      const cached = await getOrFetch<HealthResult>(
-        cacheKey,
-        async () => {
-          const fetchResult = await fetchPackageHealth(pkg, ecosystem);
-          if (fetchResult.rateLimit) {
-            currentRateLimit = fetchResult.rateLimit;
-          }
-          return fetchResult.result;
-        },
-        getDynamicTTL(0) // Default TTL; will be overwritten if we have download data
-      );
+    const batchResults = await Promise.all(
+      batch.map(async (pkg): Promise<FetchPackageResult> => {
+        const cacheKey = buildCacheKey(ecosystem, pkg.name, pkg.version);
 
-      batchResults.push({
-        result: cached.data,
-        rateLimit: currentRateLimit,
-      });
-    }
+        // Check cache manually — never serve or write degraded results
+        const cached = await redis.get(cacheKey);
+        if (cached !== null && cached !== undefined) {
+          return {
+            result: JSON.parse(cached as string) as HealthResult,
+            rateLimit: null,
+          };
+        }
+
+        // Fetch fresh data
+        const fetchResult = await fetchPackageHealth(pkg, ecosystem);
+
+        // Only cache successful (non-degraded) results
+        if (fetchResult.result.data_confidence !== "unavailable") {
+          const ttl = getDynamicTTL(fetchResult.result.signals?.weekly_downloads ?? 0);
+          await redis
+            .set(cacheKey, JSON.stringify(fetchResult.result), { ex: ttl })
+            .catch(() => {});
+        }
+
+        return fetchResult;
+      })
+    );
 
     for (const br of batchResults) {
       results.push(br.result);

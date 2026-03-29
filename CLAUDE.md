@@ -8,12 +8,9 @@ Read this before writing a single line of code. This is the law.
 
 **What this is:** A developer tool that parses `package.json` or `requirements.txt` and returns an objective health score for every dependency — detecting abandoned packages before they become a production problem.
 
-**What this is NOT:**
-- Not a security scanner (we don't replace Snyk or Dependabot)
-- Not an AI chatbot
-- Not a SaaS with accounts, billing, or stored user data
+**What this is NOT:** Not a security scanner, not an AI chatbot, not a SaaS with accounts/billing/stored user data.
 
-**Core promise to users:** Zero fake data. Every score is derived from objective, public API signals only. Never hallucinate, estimate, or fabricate package signals.
+**Core promise:** Zero fake data. Every score is derived from objective, public API signals only. Never fabricate package signals.
 
 ---
 
@@ -21,22 +18,14 @@ Read this before writing a single line of code. This is the law.
 
 - `"strict": true` in `tsconfig.json`. Non-negotiable.
 - No `any` — ever. Use `unknown` and narrow with type guards.
-- All API response shapes must be typed with explicit interfaces. Never trust raw API responses.
+- All API response shapes must be typed with explicit interfaces.
 - All function parameters and return types must be explicitly annotated.
-
-```typescript
-// NEVER
-async function fetchPackage(name: any): Promise<any> { }
-
-// ALWAYS
-async function fetchPackage(name: string): Promise<PackageHealth> { }
-```
 
 ---
 
-## Error Handling Rules
+## Error Handling
 
-Every external API call must handle all failure modes with a typed result union:
+Every external API call uses the typed result union defined in `types/index.ts`:
 
 ```typescript
 type FetchResult<T> =
@@ -44,67 +33,26 @@ type FetchResult<T> =
   | { success: false; error: "rate_limited" | "not_found" | "timeout" | "network_error"; retryAfter?: string }
 ```
 
-Specific rules:
-- GitHub 403 + `x-ratelimit-remaining: 0` → `rate_limited` → return degraded score
-- GitHub 404 → `not_found` → return `risk_level: "unknown"` (absence of GitHub ≠ abandoned)
-- Any fetch > 8 seconds → abort → `timeout` → return degraded score with cached data if available
-- npm 404 → package does not exist → `not_found` → zero score
-- **Never throw raw errors to the client. Never return HTTP 500.**
+- GitHub 403 + remaining=0 → `rate_limited` → return degraded score
+- GitHub 404 → `not_found` → `risk_level: "unknown"` (no GitHub ≠ abandoned)
+- Any fetch > 8s → abort → `timeout` → degraded score
+- npm 404 → `not_found` → zero score
+- **Never throw raw errors. Never return HTTP 500.**
 
 ---
 
 ## Rate Limit Rules — Highest Priority
 
-```typescript
-// RULE 1: GITHUB_TOKEN is required. App must throw at startup if absent.
-if (!process.env.GITHUB_TOKEN) throw new Error("GITHUB_TOKEN not set");
-
-// RULE 2: Read x-ratelimit-remaining on EVERY GitHub response.
-const remaining = parseInt(res.headers.get("x-ratelimit-remaining") ?? "0");
-
-// RULE 3: Never let remaining drop below 100. Serve degraded results instead.
-if (remaining < 100) return buildDegradedScore(pkg, "github_rate_limit");
-
-// RULE 4: Never return HTTP 500 if rate limited. Always return partial results
-//         with data_confidence: "unavailable" and retry_after timestamp.
-```
+1. `GITHUB_TOKEN` required — app throws at startup if absent (`lib/github.ts`)
+2. Read `x-ratelimit-remaining` on EVERY GitHub response
+3. Never let remaining drop below 100 — serve degraded results instead
+4. Never return HTTP 500 if rate limited — always return partial results with `data_confidence: "unavailable"`
 
 ---
 
 ## Concurrency Rules
 
-Never fire unbounded `Promise.all()` over a package list.
-
-```typescript
-// NEVER — hammers the API, instant rate limit death
-const results = await Promise.all(packages.map(fetchPackageHealth));
-
-// ALWAYS — use the batched utility from lib/fetcher.ts
-const results = await fetchBatched(packages);
-```
-
-`fetchBatched` signature:
-```typescript
-async function fetchBatched(
-  packages: Package[],
-  batchSize = 5,
-  initialDelayMs = 200
-): Promise<HealthScore[]>
-```
-
----
-
-## No Mock Data in Production
-
-```typescript
-// NEVER in production paths
-const mockData = { stars: 1000, commits: 50 };
-
-// ONLY behind env flag — never set in production
-const data = process.env.USE_MOCK_DATA === "true" ? mockData : await fetchFromAPI();
-```
-
-CI must fail if `USE_MOCK_DATA=true` is set in any non-preview Vercel environment.
+Never fire unbounded `Promise.all()` over a package list. Always use `fetchBatched()` from `lib/fetcher.ts` (batches of 5, adaptive delay 200ms–3000ms based on rate limit state).
 
 ---
 
@@ -113,23 +61,25 @@ CI must fail if `USE_MOCK_DATA=true` is set in any non-preview Vercel environmen
 ```
 /
 ├── app/
+│   ├── layout.tsx                        # Root layout
 │   ├── page.tsx                          # Landing + file upload UI
-│   ├── results/page.tsx                  # Results dashboard
+│   ├── results/
+│   │   └── ResultsDashboard.tsx          # Results dashboard component
 │   └── api/
 │       ├── analyze/route.ts              # POST /api/analyze
-│       └── cron/
-│           └── refresh-popular/route.ts  # Nightly cache refresh
+│       └── cron/refresh-popular/route.ts # Nightly cache refresh
 ├── lib/
 │   ├── parser.ts       # Client-side only. Parses package.json / requirements.txt
 │   ├── fetcher.ts      # Batched fetching + adaptive throttle + cache read/write
 │   ├── scorer.ts       # Health Score algorithm — pure functions ONLY
 │   ├── cache.ts        # Upstash Redis wrapper with getOrFetch pattern
 │   ├── github.ts       # GitHub API client with typed responses
-│   └── npm.ts          # npm / PyPI API clients
+│   ├── npm.ts          # npm / PyPI API clients
+│   └── __tests__/      # Vitest test files
 ├── types/
 │   └── index.ts        # All shared TypeScript interfaces
 ├── data/
-│   └── popular-packages.json   # Top 500 npm packages for nightly warming
+│   └── popular-packages.json   # Top 100 npm packages for nightly warming
 └── CLAUDE.md
 ```
 
@@ -137,47 +87,29 @@ CI must fail if `USE_MOCK_DATA=true` is set in any non-preview Vercel environmen
 
 ## Separation of Concerns — Hard Rules
 
-| File | What it does | What it must NOT do |
+| File | Does | Must NOT do |
 |---|---|---|
-| `scorer.ts` | Pure scoring functions only | API calls, Redis, side effects |
-| `fetcher.ts` | Data retrieval + cache read/write | Scoring logic |
-| `parser.ts` | Parse file content | Any network request — runs client-side only |
-| `cache.ts` | Redis read/write abstraction | Business logic |
-| `app/api/*/route.ts` | Orchestrate fetcher + scorer | Business logic, direct API calls |
+| `scorer.ts` | Pure scoring functions | API calls, Redis, side effects |
+| `fetcher.ts` | Data retrieval + cache | Scoring logic |
+| `parser.ts` | Parse file content | Network requests (client-side only) |
+| `cache.ts` | Redis read/write | Business logic |
+| `api/*/route.ts` | Orchestrate fetcher + scorer | Direct API calls, business logic |
 
-`scorer.ts` must be **100% unit testable with zero mocks**. If you need to mock something to test scorer.ts, the architecture is wrong.
+`scorer.ts` must be **100% unit testable with zero mocks**.
 
 ---
 
-## Caching Pattern — Always Use This Exact Shape
+## Caching
 
-```typescript
-// lib/cache.ts
-async function getOrFetch<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  ttlSeconds: number
-): Promise<{ data: T; cached: boolean }> {
-  const cached = await redis.get(key);
-  if (cached) return { data: JSON.parse(cached as string), cached: true };
-
-  const data = await fetcher();
-  await redis.set(key, JSON.stringify(data), { ex: ttlSeconds });
-  return { data, cached: false };
-}
-```
-
-Rules:
+Uses `getOrFetch<T>()` from `lib/cache.ts` with Upstash Redis:
 - Cache keys: `dep:{ecosystem}:{package_name}:{major_version}`
-- Never cache error states — only successful API responses
-- Always return `cached: boolean` so the UI can show cache hit rate
-- Never cache degraded results
+- Dynamic TTL: 72h (>1M dl/wk), 48h (100k–1M), 24h (10k–100k), 12h (<10k)
+- Never cache error states or degraded results
+- Always return `cached: boolean` for UI hit rate display
 
 ---
 
 ## GitHub API — Approved Endpoints Only
-
-Use only these endpoints. No others without explicit discussion:
 
 | Data | Endpoint |
 |---|---|
@@ -187,61 +119,51 @@ Use only these endpoints. No others without explicit discussion:
 | Recent PRs | `GET /repos/{owner}/{repo}/pulls?state=closed&per_page=20` |
 | CVEs | `GET /repos/{owner}/{repo}/security-advisories` |
 
-**Resolve npm package → GitHub repo URL:**
-1. Fetch `https://registry.npmjs.org/{package}` → parse `repository.url`
-2. Strip `git+`, `.git`, convert `git://` → `https://`
-3. No `repository` field → `github_url: null` → proceed with npm-only signals
+Resolve npm → GitHub: fetch registry, parse `repository.url`, strip `git+`/`.git`. No repo field → `github_url: null` → npm-only signals.
 
 ---
 
-## Scoring Engine Rules
+## Scoring Engine
 
-- Formula defined in `SYSTEM_DESIGN.md`. Implement it exactly — do not change weights.
-- Every signal scorer: `(value: number | null) => number`
-- Every output: clamped to `[0, 100]`
-- `null` input = use the "insufficient data" fallback score — never skip the signal
-- `security_penalty` is a multiplier applied after the weighted sum
+Formula defined in `SYSTEM_DESIGN.md` — do not change weights:
 
-```typescript
-// Correct null handling pattern
-function scoreCommits(daysSinceLastCommit: number | null): number {
-  if (daysSinceLastCommit === null) return 40; // insufficient data
-  if (daysSinceLastCommit <= 30) return 100;
-  if (daysSinceLastCommit <= 90) return 80;
-  if (daysSinceLastCommit <= 180) return 55;
-  if (daysSinceLastCommit <= 365) return 25;
-  return 0;
-}
-```
+| Signal | Weight | Null fallback |
+|---|---|---|
+| commit_score | 0.25 | 40 |
+| release_score | 0.20 | 40 |
+| issue_health_score | 0.15 | 70 |
+| contributor_score | 0.15 | 40 |
+| pr_velocity_score | 0.10 | 40 |
+| download_trend_score | 0.10 | 50 |
+| maintainer_score | 0.05 | 50 |
+
+`security_penalty` is a multiplier applied after the weighted sum. All outputs clamped to [0, 100].
 
 ---
 
 ## Environment Variables
 
 ```bash
-# Required — app throws at startup without this
-GITHUB_TOKEN=ghp_...
-
-# Required — get from Upstash console
-UPSTASH_REDIS_REST_URL=https://...
-UPSTASH_REDIS_REST_TOKEN=...
-
-# Development only — NEVER in production
-USE_MOCK_DATA=false
+GITHUB_TOKEN=ghp_...                    # Required — throws at startup
+UPSTASH_REDIS_REST_URL=https://...      # Required
+UPSTASH_REDIS_REST_TOKEN=...            # Required
+USE_MOCK_DATA=false                     # Dev only — NEVER in production
 ```
 
 ---
 
-## Testing Requirements
+## Testing (Vitest)
 
-| Module | Coverage requirement |
+| Module | Requirement |
 |---|---|
-| `scorer.ts` | 100% — pure functions, no excuses |
-| `parser.ts` | Must handle: valid package.json, package.json with devDependencies, monorepo package.json, malformed JSON (must not throw) |
-| `fetcher.ts` | Must mock: success, GitHub 403, GitHub 404, timeout > 8s |
-| `cache.ts` | Must test: HIT, MISS, write failure |
+| `scorer.ts` | 100% coverage — pure functions, no mocks |
+| `parser.ts` | Valid JSON, devDeps, monorepo, malformed (must not throw) |
+| `fetcher.ts` | Mock: success, GitHub 403, GitHub 404, timeout > 8s |
+| `cache.ts` | Test: HIT, MISS, write failure |
 
 No snapshot tests. Only explicit assertions on typed return values.
+
+Run: `npm run test` (111 tests passing)
 
 ---
 
@@ -250,7 +172,7 @@ No snapshot tests. Only explicit assertions on typed return values.
 - User accounts or authentication
 - Email capture or newsletters
 - Paid tiers or paywalls
-- LLM-generated alternative package suggestions
-- Any analytics that identify individual users
-- A backend database (Redis cache only, not a DB)
-- Unauthenticated GitHub API calls (60 req/hr path is permanently closed)
+- LLM-generated suggestions
+- User-identifying analytics
+- A backend database (Redis cache only)
+- Unauthenticated GitHub API calls
