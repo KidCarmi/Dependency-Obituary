@@ -398,10 +398,11 @@ export async function fetchBatched(
         const cacheKey = buildCacheKey(ecosystem, pkg.name, pkg.version);
 
         // Check cache manually — never serve or write degraded results
+        // Upstash automatically deserializes JSON, so cached is already a HealthResult object
         const cached = await redis.get(cacheKey);
         if (cached !== null && cached !== undefined) {
           return {
-            result: JSON.parse(cached as string) as HealthResult,
+            result: cached as HealthResult,
             rateLimit: null,
           };
         }
