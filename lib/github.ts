@@ -144,9 +144,20 @@ export async function fetchContributors(
   owner: string,
   repo: string
 ): Promise<FetchResult<GitHubContributor[]>> {
-  return githubFetch<GitHubContributor[]>(
+  const result = await githubFetch<GitHubContributor[]>(
     `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`
   );
+
+  // GitHub returns 202 when computing stats asynchronously.
+  // Retry once after 1s — the data is usually ready on second attempt.
+  if (!result.success && result.error === "not_found") {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return githubFetch<GitHubContributor[]>(
+      `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`
+    );
+  }
+
+  return result;
 }
 
 export async function fetchRecentPRs(

@@ -345,6 +345,16 @@ async function fetchPackageHealth(
       risk_level: scored.riskLevel,
       data_confidence: githubUrl ? "high" : "low",
       signals: buildSignalsResponse(signals),
+      score_breakdown: {
+        commit_score: scored.breakdown.commitScore,
+        release_score: scored.breakdown.releaseScore,
+        issue_health_score: scored.breakdown.issueHealthScore,
+        contributor_score: scored.breakdown.contributorScore,
+        pr_velocity_score: scored.breakdown.prVelocityScore,
+        download_trend_score: scored.breakdown.downloadTrendScore,
+        maintainer_score: scored.breakdown.maintainerScore,
+        security_penalty: scored.breakdown.securityPenalty,
+      },
       github_url: githubUrl,
       npm_url: npmUrl,
     };
