@@ -401,10 +401,13 @@ export async function fetchBatched(
         // Upstash automatically deserializes JSON, so cached is already a HealthResult object
         const cached = await redis.get(cacheKey);
         if (cached !== null && cached !== undefined) {
-          return {
-            result: cached as HealthResult,
-            rateLimit: null,
-          };
+          const cachedResult = cached as HealthResult;
+          // Skip stale degraded entries — delete and fetch fresh
+          if (cachedResult.data_confidence === "unavailable") {
+            await redis.del(cacheKey).catch(() => {});
+          } else {
+            return { result: cachedResult, rateLimit: null };
+          }
         }
 
         // Fetch fresh data
