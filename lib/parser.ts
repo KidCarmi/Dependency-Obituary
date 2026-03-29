@@ -66,6 +66,116 @@ export function parseRequirementsTxt(content: string): Package[] {
   return packages;
 }
 
+// ─── Cargo.toml Parser ─────────────────────────────────────────────────────
+
+export function parseCargoToml(content: string): Package[] {
+  const packages: Package[] = [];
+  let inDeps = false;
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+
+    // Detect section headers
+    if (/^\[(.+)\]$/.test(line)) {
+      const section = line.slice(1, -1).trim();
+      inDeps =
+        section === "dependencies" ||
+        section === "dev-dependencies" ||
+        section === "build-dependencies";
+      continue;
+    }
+
+    if (!inDeps || !line || line.startsWith("#")) continue;
+
+    // Simple: name = "version"
+    const simple = line.match(/^([A-Za-z0-9_-]+)\s*=\s*"([^"]+)"/);
+    if (simple) {
+      packages.push({
+        name: simple[1],
+        version: simple[2].replace(/^[\^~>=<*]*/, "") || "0.0.0",
+      });
+      continue;
+    }
+
+    // Inline table: name = { version = "1.0", ... }
+    const table = line.match(
+      /^([A-Za-z0-9_-]+)\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"/
+    );
+    if (table) {
+      packages.push({
+        name: table[1],
+        version: table[2].replace(/^[\^~>=<*]*/, "") || "0.0.0",
+      });
+    }
+  }
+
+  return packages;
+}
+
+// ─── go.mod Parser ─────────────────────────────────────────────────────────
+
+export function parseGoMod(content: string): Package[] {
+  const packages: Package[] = [];
+  let inRequire = false;
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+
+    // Single-line require: require github.com/foo/bar v1.2.3
+    const single = line.match(
+      /^require\s+(\S+)\s+(v[\d.]+(?:-[A-Za-z0-9.+-]*)?)/
+    );
+    if (single) {
+      packages.push({ name: single[1], version: single[2].replace(/^v/, "") });
+      continue;
+    }
+
+    // Block require start/end
+    if (line === "require (") {
+      inRequire = true;
+      continue;
+    }
+    if (line === ")" && inRequire) {
+      inRequire = false;
+      continue;
+    }
+
+    if (!inRequire || !line || line.startsWith("//")) continue;
+
+    // Inside require block: github.com/foo/bar v1.2.3
+    const dep = line.match(/^(\S+)\s+(v[\d.]+(?:-[A-Za-z0-9.+-]*)?)/);
+    if (dep) {
+      packages.push({ name: dep[1], version: dep[2].replace(/^v/, "") });
+    }
+  }
+
+  return packages;
+}
+
+// ─── Gemfile Parser ────────────────────────────────────────────────────────
+
+export function parseGemfile(content: string): Package[] {
+  const packages: Package[] = [];
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    // gem 'name', '~> 1.0'  or  gem "name", ">= 1.0"
+    const match = line.match(
+      /^gem\s+['"]([A-Za-z0-9_-]+)['"]\s*(?:,\s*['"][~>=<!\s]*([\d.]+)['"])?/
+    );
+    if (match) {
+      packages.push({
+        name: match[1],
+        version: match[2] ?? "0.0.0",
+      });
+    }
+  }
+
+  return packages;
+}
+
 // ─── Auto-Detect Parser ────────────────────────────────────────────────────
 
 export function parseFile(
@@ -80,16 +190,42 @@ export function parseFile(
 
   if (
     lower === "requirements.txt" ||
-    lower.endsWith("/requirements.txt") ||
-    lower.endsWith(".txt")
+    lower.endsWith("/requirements.txt")
   ) {
     return { ecosystem: "pypi", packages: parseRequirementsTxt(content) };
   }
 
-  // Default: try JSON first, then requirements.txt format
+  if (lower === "cargo.toml" || lower.endsWith("/cargo.toml")) {
+    return { ecosystem: "cargo", packages: parseCargoToml(content) };
+  }
+
+  if (lower === "go.mod" || lower.endsWith("/go.mod")) {
+    return { ecosystem: "go", packages: parseGoMod(content) };
+  }
+
+  if (lower === "gemfile" || lower.endsWith("/gemfile")) {
+    return { ecosystem: "rubygems", packages: parseGemfile(content) };
+  }
+
+  // Default: try each format by content
   const jsonResult = parsePackageJson(content);
   if (jsonResult.length > 0) {
     return { ecosystem: "npm", packages: jsonResult };
+  }
+
+  const cargoResult = parseCargoToml(content);
+  if (cargoResult.length > 0) {
+    return { ecosystem: "cargo", packages: cargoResult };
+  }
+
+  const goResult = parseGoMod(content);
+  if (goResult.length > 0) {
+    return { ecosystem: "go", packages: goResult };
+  }
+
+  const gemResult = parseGemfile(content);
+  if (gemResult.length > 0) {
+    return { ecosystem: "rubygems", packages: gemResult };
   }
 
   const txtResult = parseRequirementsTxt(content);

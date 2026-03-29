@@ -157,13 +157,13 @@ USE_MOCK_DATA=false                     # Dev only — NEVER in production
 | Module | Requirement |
 |---|---|
 | `scorer.ts` | 100% coverage — pure functions, no mocks |
-| `parser.ts` | Valid JSON, devDeps, monorepo, malformed (must not throw) |
+| `parser.ts` | All formats: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile |
 | `fetcher.ts` | Mock: success, GitHub 403, GitHub 404, timeout > 8s |
 | `cache.ts` | Test: HIT, MISS, write failure |
 
 No snapshot tests. Only explicit assertions on typed return values.
 
-Run: `npm run test` (111 tests passing)
+Run: `npm run test` (131 tests passing)
 
 ---
 

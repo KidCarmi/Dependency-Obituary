@@ -1,6 +1,6 @@
 // ─── Ecosystem ───────────────────────────────────────────────────────────────
 
-export type Ecosystem = "npm" | "pypi";
+export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems";
 
 // ─── Package (from parser) ───────────────────────────────────────────────────
 
@@ -222,4 +222,56 @@ export interface PyPIDownloadsData {
   };
   package: string;
   type: string;
+}
+
+// ─── Cargo (crates.io) API Response Types ───────────────────────────────────
+
+export interface CratesIoPackageData {
+  crate: {
+    name: string;
+    repository: string | null;
+    max_version: string;
+    recent_downloads: number | null;
+    created_at: string;
+    updated_at: string;
+  };
+  versions: Array<{
+    num: string;
+    created_at: string;
+    yanked: boolean;
+    published_by: { login: string } | null;
+  }>;
+}
+
+export interface CratesIoDownloadsData {
+  version_downloads: Array<{
+    date: string;
+    downloads: number;
+  }>;
+}
+
+// ─── Go Module Proxy API Response Types ─────────────────────────────────────
+
+export interface GoModuleData {
+  Version: string;
+  Time: string;
+}
+
+// ─── RubyGems API Response Types ────────────────────────────────────────────
+
+export interface RubyGemData {
+  name: string;
+  downloads: number;
+  version: string;
+  version_downloads: number;
+  source_code_uri: string | null;
+  homepage_uri: string | null;
+  project_uri: string;
+  metadata: Record<string, string>;
+}
+
+export interface RubyGemVersionData {
+  number: string;
+  created_at: string;
+  downloads_count: number;
 }

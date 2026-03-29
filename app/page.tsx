@@ -121,16 +121,22 @@ export default function HomePage(): React.ReactElement {
           <label className="cursor-pointer block">
             <input
               type="file"
-              accept=".json,.txt"
+              accept=".json,.txt,.toml,.mod,.lock"
               onChange={handleFileInput}
               className="hidden"
             />
             <div className="text-gray-400">
               <p className="text-lg mb-2">
-                Drop your <code className="text-gray-300">package.json</code> or{" "}
-                <code className="text-gray-300">requirements.txt</code>
+                Drop your dependency file
               </p>
-              <p className="text-sm">or click to browse</p>
+              <p className="text-sm text-gray-500">
+                <code className="text-gray-400">package.json</code>{" "}
+                <code className="text-gray-400">requirements.txt</code>{" "}
+                <code className="text-gray-400">Cargo.toml</code>{" "}
+                <code className="text-gray-400">go.mod</code>{" "}
+                <code className="text-gray-400">Gemfile</code>
+              </p>
+              <p className="text-sm mt-2">or click to browse</p>
             </div>
           </label>
         </div>

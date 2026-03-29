@@ -40,7 +40,13 @@ import {
   fetchNpmDownloads12wAgo,
   fetchPyPIPackage,
   fetchPyPIDownloads,
+  fetchCratesIoPackage,
+  fetchCratesIoDownloads,
+  fetchGoModule,
+  fetchRubyGem,
+  fetchRubyGemVersions,
   extractGitHubUrl,
+  extractGitHubUrlFromGoModule,
 } from "@/lib/npm";
 import { scorePackage } from "@/lib/scorer";
 
@@ -55,6 +61,31 @@ function getAdaptiveDelay(remaining: number, initialDelayMs: number): number {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ─── Download Aggregation (crates.io daily → weekly) ───────────────────────
+
+function aggregateDownloads(
+  downloads: Array<{ date: string; downloads: number }>,
+  daysAgoStart: number,
+  daysAgoEnd: number
+): number | null {
+  const now = Date.now();
+  const startMs = now - daysAgoEnd * 24 * 3600 * 1000;
+  const endMs = now - daysAgoStart * 24 * 3600 * 1000;
+
+  let total = 0;
+  let found = false;
+
+  for (const d of downloads) {
+    const t = new Date(d.date).getTime();
+    if (t >= startMs && t < endMs) {
+      total += d.downloads;
+      found = true;
+    }
+  }
+
+  return found ? total : null;
 }
 
 // ─── Degraded Result Builder ────────────────────────────────────────────────
@@ -251,8 +282,7 @@ async function fetchPackageHealth(
           );
         }
       }
-    } else {
-      // PyPI
+    } else if (ecosystem === "pypi") {
       const [pkgResult, dlResult] = await Promise.all([
         fetchPyPIPackage(pkg.name),
         fetchPyPIDownloads(pkg.name),
@@ -288,6 +318,108 @@ async function fetchPackageHealth(
           (Date.now() - latestUpload) / (1000 * 3600 * 24)
         );
       }
+    } else if (ecosystem === "cargo") {
+      const [pkgResult, dlResult] = await Promise.all([
+        fetchCratesIoPackage(pkg.name),
+        fetchCratesIoDownloads(pkg.name),
+      ]);
+
+      if (!pkgResult.success) {
+        return {
+          result: buildDegradedResult(pkg, pkgResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      npmUrl = `https://crates.io/crates/${pkg.name}`;
+      githubUrl = extractGitHubUrl(pkgResult.data);
+
+      // recent_downloads is last 90 days — estimate weekly
+      registryData.weeklyDownloads = pkgResult.data.crate.recent_downloads
+        ? Math.round(pkgResult.data.crate.recent_downloads / 13)
+        : null;
+
+      // Compute download trend from daily data
+      if (dlResult.success) {
+        const downloads = dlResult.data.version_downloads;
+        const recentWeek = aggregateDownloads(downloads, 0, 7);
+        const oldWeek = aggregateDownloads(downloads, 84, 91);
+        if (recentWeek !== null) registryData.weeklyDownloads = recentWeek;
+        if (oldWeek !== null) registryData.weeklyDownloads12wAgo = oldWeek;
+      }
+
+      // Multiple publishers
+      const publishers = new Set<string>();
+      for (const v of pkgResult.data.versions) {
+        if (v.published_by?.login) publishers.add(v.published_by.login);
+      }
+      registryData.hasMultipleMaintainers = publishers.size > 1;
+
+      // Days since last release (latest non-yanked version)
+      const latestVersion = pkgResult.data.versions.find((v) => !v.yanked);
+      if (latestVersion) {
+        registryData.daysSinceLastRelease = Math.floor(
+          (Date.now() - new Date(latestVersion.created_at).getTime()) / (1000 * 3600 * 24)
+        );
+      }
+    } else if (ecosystem === "go") {
+      const modResult = await fetchGoModule(pkg.name);
+
+      if (!modResult.success) {
+        return {
+          result: buildDegradedResult(pkg, modResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      npmUrl = `https://pkg.go.dev/${pkg.name}`;
+      githubUrl = extractGitHubUrlFromGoModule(pkg.name);
+
+      // Go module proxy only gives latest version time
+      if (modResult.data.Time) {
+        registryData.daysSinceLastRelease = Math.floor(
+          (Date.now() - new Date(modResult.data.Time).getTime()) / (1000 * 3600 * 24)
+        );
+      }
+      // No download data available from Go proxy
+    } else if (ecosystem === "rubygems") {
+      const [gemResult, versionsResult] = await Promise.all([
+        fetchRubyGem(pkg.name),
+        fetchRubyGemVersions(pkg.name),
+      ]);
+
+      if (!gemResult.success) {
+        return {
+          result: buildDegradedResult(pkg, gemResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      npmUrl = `https://rubygems.org/gems/${pkg.name}`;
+      githubUrl = extractGitHubUrl(gemResult.data);
+
+      // RubyGems provides total downloads and version downloads
+      registryData.weeklyDownloads = gemResult.data.version_downloads
+        ? Math.round(gemResult.data.version_downloads / 4)
+        : null;
+
+      // Days since last release from versions
+      if (versionsResult.success && versionsResult.data.length > 0) {
+        const latest = versionsResult.data[0];
+        registryData.daysSinceLastRelease = Math.floor(
+          (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 3600 * 24)
+        );
+
+        // Estimate download trend from version history
+        if (versionsResult.data.length >= 2) {
+          registryData.weeklyDownloads = Math.round(
+            versionsResult.data[0].downloads_count / 4
+          );
+        }
+      }
+
+      // No direct maintainer count from RubyGems basic API
+      registryData.hasMultipleMaintainers = null;
     }
 
     // Step 2: Fetch GitHub data (if URL available)
