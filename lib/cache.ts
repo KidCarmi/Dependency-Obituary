@@ -59,3 +59,8 @@ export async function getOrFetch<T>(
   }
   return { data, cached: false };
 }
+
+// ─── Direct Cache Access ─────────────────────────────────────────────────────
+// Exported so fetcher.ts can do conditional writes (never cache degraded results)
+
+export { redis };

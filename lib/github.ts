@@ -95,6 +95,11 @@ async function githubFetch<T>(url: string): Promise<FetchResult<T>> {
       };
     }
 
+    if (res.status === 202) {
+      // GitHub is computing stats asynchronously — treat as no data
+      return { success: false, error: "not_found" };
+    }
+
     if (res.status === 404) {
       return { success: false, error: "not_found" };
     }
