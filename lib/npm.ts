@@ -15,6 +15,11 @@ import type {
   NpmDownloadsData,
   PyPIPackageData,
   PyPIDownloadsData,
+  CratesIoPackageData,
+  CratesIoDownloadsData,
+  GoModuleData,
+  RubyGemData,
+  RubyGemVersionData,
 } from "@/types";
 
 const TIMEOUT_MS = 8000;
@@ -57,10 +62,10 @@ async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
 // ─── GitHub URL Extraction ──────────────────────────────────────────────────
 
 export function extractGitHubUrl(
-  registryData: NpmPackageData | PyPIPackageData
+  registryData: NpmPackageData | PyPIPackageData | CratesIoPackageData | RubyGemData
 ): string | null {
   // npm: repository.url field
-  if ("repository" in registryData && registryData.repository?.url) {
+  if ("repository" in registryData && typeof registryData.repository === "object" && registryData.repository?.url) {
     const url = registryData.repository.url
       .replace(/^git\+/, "")
       .replace(/\.git$/, "")
@@ -85,6 +90,36 @@ export function extractGitHubUrl(
     }
   }
 
+  // crates.io: repository string field on crate object
+  if ("crate" in registryData && registryData.crate.repository) {
+    const url = registryData.crate.repository
+      .replace(/\.git$/, "");
+    if (url.includes("github.com")) return url;
+  }
+
+  // RubyGems: source_code_uri or homepage_uri
+  if ("source_code_uri" in registryData) {
+    if (registryData.source_code_uri?.includes("github.com")) {
+      return registryData.source_code_uri;
+    }
+    if (registryData.homepage_uri?.includes("github.com")) {
+      return registryData.homepage_uri;
+    }
+  }
+
+  return null;
+}
+
+// ─── GitHub URL from Go module path ────────────────────────────────────────
+
+export function extractGitHubUrlFromGoModule(modulePath: string): string | null {
+  if (modulePath.startsWith("github.com/")) {
+    // github.com/owner/repo or github.com/owner/repo/subpath
+    const parts = modulePath.split("/");
+    if (parts.length >= 3) {
+      return `https://github.com/${parts[1]}/${parts[2]}`;
+    }
+  }
   return null;
 }
 
@@ -135,5 +170,51 @@ export async function fetchPyPIDownloads(
 ): Promise<FetchResult<PyPIDownloadsData>> {
   return registryFetch<PyPIDownloadsData>(
     `https://pypistats.org/api/packages/${encodeURIComponent(name)}/recent`
+  );
+}
+
+// ─── crates.io Endpoints ───────────────────────────────────────────────────
+
+export async function fetchCratesIoPackage(
+  name: string
+): Promise<FetchResult<CratesIoPackageData>> {
+  return registryFetch<CratesIoPackageData>(
+    `https://crates.io/api/v1/crates/${encodeURIComponent(name)}`
+  );
+}
+
+export async function fetchCratesIoDownloads(
+  name: string
+): Promise<FetchResult<CratesIoDownloadsData>> {
+  return registryFetch<CratesIoDownloadsData>(
+    `https://crates.io/api/v1/crates/${encodeURIComponent(name)}/downloads`
+  );
+}
+
+// ─── Go Module Proxy Endpoints ─────────────────────────────────────────────
+
+export async function fetchGoModule(
+  modulePath: string
+): Promise<FetchResult<GoModuleData>> {
+  return registryFetch<GoModuleData>(
+    `https://proxy.golang.org/${encodeURIComponent(modulePath)}/@latest`
+  );
+}
+
+// ─── RubyGems Endpoints ────────────────────────────────────────────────────
+
+export async function fetchRubyGem(
+  name: string
+): Promise<FetchResult<RubyGemData>> {
+  return registryFetch<RubyGemData>(
+    `https://rubygems.org/api/v1/gems/${encodeURIComponent(name)}.json`
+  );
+}
+
+export async function fetchRubyGemVersions(
+  name: string
+): Promise<FetchResult<RubyGemVersionData[]>> {
+  return registryFetch<RubyGemVersionData[]>(
+    `https://rubygems.org/api/v1/versions/${encodeURIComponent(name)}.json`
   );
 }

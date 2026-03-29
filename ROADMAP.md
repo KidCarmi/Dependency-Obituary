@@ -14,10 +14,11 @@
 - [x] Add score explanation tooltip per signal in the results dashboard
 - [x] Add score breakdown bars (per-signal scores with weights)
 
-## v1.3 — More Ecosystems
-- `cargo` — Cargo.toml + crates.io API
-- `go.mod` — pkg.go.dev API
-- `Gemfile` — rubygems.org API
+## v1.3 — More Ecosystems (done)
+- [x] `cargo` — Cargo.toml parser + crates.io API (downloads, versions, maintainers)
+- [x] `go.mod` — go.mod parser + Go module proxy API (version/release dates)
+- [x] `Gemfile` — Gemfile parser + RubyGems API (versions, downloads, source URLs)
+- [x] 20 new parser tests (131 total)
 
 ## v1.4 — CI Integration
 - GitHub Action: `dependency-obituary-action` — fail CI if any package scores below threshold

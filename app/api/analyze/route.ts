@@ -16,7 +16,13 @@ import { fetchBatched } from "@/lib/fetcher";
 const MAX_PACKAGES = 500;
 
 function isValidEcosystem(value: unknown): value is Ecosystem {
-  return value === "npm" || value === "pypi";
+  return (
+    value === "npm" ||
+    value === "pypi" ||
+    value === "cargo" ||
+    value === "go" ||
+    value === "rubygems"
+  );
 }
 
 function isValidPackage(value: unknown): value is Package {
