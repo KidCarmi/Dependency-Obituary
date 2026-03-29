@@ -1,7 +1,10 @@
 {
   "name": "dependency-obituary",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "bin": {
+    "dependency-obituary": "./bin/check.js"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
