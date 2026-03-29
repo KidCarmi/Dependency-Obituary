@@ -20,9 +20,11 @@
 - [x] `Gemfile` — Gemfile parser + RubyGems API (versions, downloads, source URLs)
 - [x] 20 new parser tests (131 total)
 
-## v1.4 — CI Integration
-- GitHub Action: `dependency-obituary-action` — fail CI if any package scores below threshold
-- CLI tool: `npx dependency-obituary check` — local checks without the web UI
+## v1.4 — CI Integration (done)
+- [x] GitHub Action: `uses: KidCarmi/Dependency-Obituary@main` — fails CI if any package scores below threshold
+- [x] CLI tool: `node bin/check.js [file] --threshold 60` — local checks with colored terminal output
+- [x] Auto-detects dependency files (package.json, requirements.txt, Cargo.toml, go.mod, Gemfile)
+- [x] Example workflow: `.github/workflows/dependency-health.yml`
 
 ## v1.5 — Developer Ergonomics
 - VS Code extension — inline health scores in `package.json`

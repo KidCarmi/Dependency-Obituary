@@ -1,0 +1,37 @@
+name: "Dependency Obituary"
+description: "Check dependency health scores and fail CI if any package scores below threshold"
+branding:
+  icon: "shield"
+  color: "red"
+
+inputs:
+  file:
+    description: "Path to dependency file (auto-detects if not set)"
+    required: false
+    default: ""
+  threshold:
+    description: "Minimum passing health score (0-100)"
+    required: false
+    default: "60"
+  api-url:
+    description: "API base URL"
+    required: false
+    default: "https://dependency-obituary.vercel.app"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Run health check
+      shell: bash
+      env:
+        DEPENDENCY_OBITUARY_URL: ${{ inputs.api-url }}
+      run: |
+        node "${{ github.action_path }}/bin/check.js" \
+          ${{ inputs.file }} \
+          --threshold ${{ inputs.threshold }} \
+          --api-url "${{ inputs.api-url }}"

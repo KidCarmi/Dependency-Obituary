@@ -1,0 +1,23 @@
+name: Dependency Health Check
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "requirements.txt"
+      - "Cargo.toml"
+      - "go.mod"
+      - "Gemfile"
+  schedule:
+    - cron: "0 9 * * 1" # Weekly on Monday at 9 AM
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check dependency health
+        uses: KidCarmi/Dependency-Obituary@main
+        with:
+          threshold: "50"
