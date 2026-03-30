@@ -5,21 +5,21 @@ import { buildCacheKey, getDynamicTTL } from "@/lib/cache";
 
 describe("buildCacheKey", () => {
   it("builds correct key for npm package", () => {
-    expect(buildCacheKey("npm", "react", "18.2.0")).toBe("v2:dep:npm:react:18");
+    expect(buildCacheKey("npm", "react", "18.2.0")).toBe("v3:dep:npm:react:18");
   });
 
   it("builds correct key for pypi package", () => {
     expect(buildCacheKey("pypi", "requests", "2.28.0")).toBe(
-      "v2:dep:pypi:requests:2"
+      "v3:dep:pypi:requests:2"
     );
   });
 
   it("handles version with no dots", () => {
-    expect(buildCacheKey("npm", "left-pad", "1")).toBe("v2:dep:npm:left-pad:1");
+    expect(buildCacheKey("npm", "left-pad", "1")).toBe("v3:dep:npm:left-pad:1");
   });
 
   it("handles empty version string", () => {
-    expect(buildCacheKey("npm", "foo", "")).toBe("v2:dep:npm:foo:0");
+    expect(buildCacheKey("npm", "foo", "")).toBe("v3:dep:npm:foo:0");
   });
 });
 
