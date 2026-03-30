@@ -431,8 +431,11 @@ export default function HomePage(): React.ReactElement {
       </section>
 
       {/* Footer */}
-      <footer className="text-center pb-12 text-xs text-gray-700">
-        Built in public. $0 to run. No VC. No bullshit.
+      <footer className="text-center pb-12">
+        <p className="text-xs text-gray-700">
+          Built in public. $0 to run. No VC. No bullshit.
+        </p>
+        <p className="text-xs text-gray-800 mt-1">v0.3.0</p>
       </footer>
     </main>
   );
