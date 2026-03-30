@@ -32,9 +32,37 @@ const NO_RATE_LIMIT: RateLimitState = {
   resetAt: "",
 };
 
+// ─── URL Allowlist ──────────────────────────────────────────────────────────
+
+const ALLOWED_REGISTRY_HOSTNAMES = new Set([
+  "registry.npmjs.org",
+  "api.npmjs.org",
+  "pypi.org",
+  "pypistats.org",
+  "crates.io",
+  "proxy.golang.org",
+  "rubygems.org",
+  "repo.packagist.org",
+  "search.maven.org",
+  "pub.dev",
+]);
+
+function isAllowedRegistryUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_REGISTRY_HOSTNAMES.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
 async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
+  if (!isAllowedRegistryUrl(url)) {
+    return { success: false, error: "network_error" };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -63,6 +91,15 @@ async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
 
 // ─── GitHub URL Extraction ──────────────────────────────────────────────────
 
+function isGitHubHostname(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === "github.com" || parsed.hostname.endsWith(".github.com");
+  } catch {
+    return false;
+  }
+}
+
 export function extractGitHubUrl(
   registryData: NpmPackageData | PyPIPackageData | CratesIoPackageData | RubyGemData | PackagistPackageData | PubPackageData
 ): string | null {
@@ -74,7 +111,7 @@ export function extractGitHubUrl(
       .replace(/^git:\/\//, "https://")
       .replace(/^ssh:\/\/git@github\.com/, "https://github.com");
 
-    if (url.includes("github.com")) return url;
+    if (isGitHubHostname(url)) return url;
   }
 
   // PyPI: project_urls field
@@ -88,7 +125,7 @@ export function extractGitHubUrl(
       "Code",
     ]) {
       const url = urls[key];
-      if (url && url.includes("github.com")) return url;
+      if (url && isGitHubHostname(url)) return url;
     }
   }
 
@@ -96,15 +133,15 @@ export function extractGitHubUrl(
   if ("crate" in registryData && registryData.crate.repository) {
     const url = registryData.crate.repository
       .replace(/\.git$/, "");
-    if (url.includes("github.com")) return url;
+    if (isGitHubHostname(url)) return url;
   }
 
   // RubyGems: source_code_uri or homepage_uri
   if ("source_code_uri" in registryData) {
-    if (registryData.source_code_uri?.includes("github.com")) {
+    if (registryData.source_code_uri && isGitHubHostname(registryData.source_code_uri)) {
       return registryData.source_code_uri;
     }
-    if (registryData.homepage_uri?.includes("github.com")) {
+    if (registryData.homepage_uri && isGitHubHostname(registryData.homepage_uri)) {
       return registryData.homepage_uri;
     }
   }
@@ -112,14 +149,14 @@ export function extractGitHubUrl(
   // Packagist: repository field
   if ("package" in registryData && "repository" in (registryData as PackagistPackageData).package) {
     const repo = (registryData as PackagistPackageData).package.repository;
-    if (repo?.includes("github.com")) return repo.replace(/\.git$/, "");
+    if (repo && isGitHubHostname(repo)) return repo.replace(/\.git$/, "");
   }
 
   // pub.dev: repository or homepage in pubspec
   if ("latest" in registryData) {
     const pubspec = (registryData as PubPackageData).latest.pubspec;
-    if (pubspec.repository?.includes("github.com")) return pubspec.repository;
-    if (pubspec.homepage?.includes("github.com")) return pubspec.homepage;
+    if (pubspec.repository && isGitHubHostname(pubspec.repository)) return pubspec.repository;
+    if (pubspec.homepage && isGitHubHostname(pubspec.homepage)) return pubspec.homepage;
   }
 
   return null;

@@ -7,6 +7,17 @@
 
 import crypto from "crypto";
 
+// ─── URL Allowlist ─────────────────────────────────────────────────────────
+
+function isAllowedGitHubApiUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === "api.github.com";
+  } catch {
+    return false;
+  }
+}
+
 // ─── Webhook Signature Verification ────────────────────────────────────────
 
 export function verifyWebhookSignature(
@@ -76,8 +87,13 @@ export async function getInstallationToken(
 
   const jwt = createAppJwt(appId, privateKey);
 
+  const tokenUrl = `https://api.github.com/app/installations/${installationId}/access_tokens`;
+  if (!isAllowedGitHubApiUrl(tokenUrl)) {
+    throw new Error("Invalid GitHub API URL for installation token");
+  }
+
   const res = await fetch(
-    `https://api.github.com/app/installations/${installationId}/access_tokens`,
+    tokenUrl,
     {
       method: "POST",
       headers: {
@@ -118,8 +134,13 @@ export async function getPrChangedFiles(
   prNumber: number,
   token: string
 ): Promise<PrFile[]> {
+  const prFilesUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${encodeURIComponent(String(prNumber))}/files?per_page=100`;
+  if (!isAllowedGitHubApiUrl(prFilesUrl)) {
+    return [];
+  }
+
   const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
+    prFilesUrl,
     {
       headers: {
         Accept: "application/vnd.github+json",
@@ -139,6 +160,9 @@ export async function getFileContent(
 ): Promise<string | null> {
   // contents_url has {?ref} template — strip it
   const url = contentsUrl.replace(/\{.*\}$/, "");
+  if (!isAllowedGitHubApiUrl(url)) {
+    return null;
+  }
   const res = await fetch(url, {
     headers: {
       Accept: "application/vnd.github.raw+json",
@@ -164,8 +188,13 @@ export async function findBotComment(
   token: string,
   botMarker: string
 ): Promise<number | null> {
+  const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${encodeURIComponent(String(prNumber))}/comments?per_page=100`;
+  if (!isAllowedGitHubApiUrl(commentsUrl)) {
+    return null;
+  }
+
   const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`,
+    commentsUrl,
     {
       headers: {
         Accept: "application/vnd.github+json",
@@ -191,8 +220,11 @@ export async function postOrUpdateComment(
   existingCommentId: number | null
 ): Promise<void> {
   if (existingCommentId) {
+    const patchUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${encodeURIComponent(String(existingCommentId))}`;
+    if (!isAllowedGitHubApiUrl(patchUrl)) return;
+
     await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/comments/${existingCommentId}`,
+      patchUrl,
       {
         method: "PATCH",
         headers: {
@@ -205,8 +237,11 @@ export async function postOrUpdateComment(
       }
     );
   } else {
+    const postUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${encodeURIComponent(String(prNumber))}/comments`;
+    if (!isAllowedGitHubApiUrl(postUrl)) return;
+
     await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
+      postUrl,
       {
         method: "POST",
         headers: {
