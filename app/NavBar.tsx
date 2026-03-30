@@ -18,6 +18,9 @@ export default function NavBar(): React.ReactElement {
         <Link href="/badge" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
           Badges
         </Link>
+        <Link href="/integrations" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+          GitHub App
+        </Link>
         {session && (
           <Link href="/dashboard" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
             Dashboard
