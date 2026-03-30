@@ -49,6 +49,8 @@ Every package gets a score from **0 (dead) to 100 (thriving)** based on public d
 
 When a signal has no data (e.g. GitHub rate-limited), its weight is redistributed to signals with real data - no unfair penalties for missing API data.
 
+**Mature package detection:** Packages like `left-pad` that are intentionally complete (high downloads, stable trend, few issues, no CVEs) get a maturity boost instead of being penalized for inactivity. Complete != abandoned.
+
 ---
 
 ## Risk Levels
