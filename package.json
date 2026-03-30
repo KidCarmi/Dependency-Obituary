@@ -1,6 +1,6 @@
 {
   "name": "dependency-obituary",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "bin": {
     "dependency-obituary": "./bin/check.js"
