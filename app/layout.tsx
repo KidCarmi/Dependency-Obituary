@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import NavBar from "./NavBar";
+import OnboardingStepper from "./OnboardingStepper";
 
 export const metadata: Metadata = {
   title: "Dependency Obituary",
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="bg-gray-950 text-gray-100 antialiased">
         <Providers>
           <NavBar />
+          <OnboardingStepper />
           {children}
         </Providers>
       </body>
