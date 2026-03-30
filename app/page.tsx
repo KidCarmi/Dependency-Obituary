@@ -39,7 +39,7 @@ const STEPS = [
   {
     num: "3",
     title: "Get the verdict",
-    desc: "Every package scored 0–100 with a full breakdown of why.",
+    desc: "Every package scored 0-100 with a full breakdown of why.",
   },
 ];
 
