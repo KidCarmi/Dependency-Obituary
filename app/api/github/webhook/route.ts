@@ -214,7 +214,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   ).length;
   const healthy = results.filter((r) => r.risk_level === "healthy").length;
 
-  const event = {
+  const activityEvent = {
     type: "pr_analyzed",
     repo: `${owner.login}/${repo}`,
     pr_number: prNumber,
@@ -227,7 +227,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // Store in a capped list per installation (last 100 events)
   const feedKey = `feed:${payload.installation?.id ?? "global"}`;
-  await redis.lpush(feedKey, JSON.stringify(event)).catch(() => {});
+  await redis.lpush(feedKey, JSON.stringify(activityEvent)).catch(() => {});
   await redis.ltrim(feedKey, 0, 99).catch(() => {});
 
   return NextResponse.json({
