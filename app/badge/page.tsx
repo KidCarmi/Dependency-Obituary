@@ -9,6 +9,9 @@ const ECOSYSTEMS: { value: Ecosystem; label: string; placeholder: string }[] = [
   { value: "cargo", label: "Cargo", placeholder: "serde" },
   { value: "go", label: "Go", placeholder: "github.com/gin-gonic/gin" },
   { value: "rubygems", label: "RubyGems", placeholder: "rails" },
+  { value: "packagist", label: "PHP", placeholder: "laravel/framework" },
+  { value: "maven", label: "Java", placeholder: "com.google.guava:guava" },
+  { value: "pub", label: "Dart", placeholder: "http" },
 ];
 
 export default function BadgePage(): React.ReactElement {
