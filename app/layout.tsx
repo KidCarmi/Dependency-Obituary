@@ -22,7 +22,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Dependency Obituary — health scores for your dependencies",
+        alt: "Dependency Obituary - health scores for your dependencies",
       },
     ],
     type: "website",

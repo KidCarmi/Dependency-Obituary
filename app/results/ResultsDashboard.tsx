@@ -163,7 +163,7 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
         </div>
       </div>
 
-      {/* Summary Cards — clickable as filters */}
+      {/* Summary Cards -clickable as filters */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
         {(["healthy", "stable", "at_risk", "critical", "abandoned"] as const).map((level) => (
           <button
@@ -402,8 +402,8 @@ function ExpandedDetails({
           <span className={confidence === "high" ? "text-green-400" : confidence === "low" ? "text-yellow-400" : "text-gray-500"}>
             {confidence}
           </span>
-          {confidence === "low" && " — no GitHub repo found, registry-only signals"}
-          {confidence === "unavailable" && " — data could not be fetched"}
+          {confidence === "low" && " - no GitHub repo found, registry-only signals"}
+          {confidence === "unavailable" && " - data could not be fetched"}
         </span>
       </div>
 
@@ -414,43 +414,43 @@ function ExpandedDetails({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
             <ScoreBar score={breakdown.commit_score} weight="25%" label="Commit Activity"
               tooltip={breakdown.commit_score >= 80
-                ? "Active development — commits within the last 90 days."
+                ? "Active development - commits within the last 90 days."
                 : breakdown.commit_score >= 40
-                  ? "Slowing down — no commits in 3-6 months. Pin your version and monitor."
+                  ? "Slowing down - no commits in 3-6 months. Pin your version and monitor."
                   : "No commits in over a year. Consider migrating to an active alternative."} />
             <ScoreBar score={breakdown.release_score} weight="20%" label="Release Cadence"
               tooltip={breakdown.release_score >= 80
-                ? "Healthy release cycle — fixes are reaching published versions."
+                ? "Healthy release cycle - fixes are reaching published versions."
                 : breakdown.release_score >= 40
-                  ? "Release slowing — last publish was 6-12 months ago. Check if critical fixes are pending."
+                  ? "Release slowing - last publish was 6-12 months ago. Check if critical fixes are pending."
                   : "No release in over a year. Bug fixes and security patches aren't reaching users."} />
             <ScoreBar score={breakdown.issue_health_score} weight="15%" label="Issue Health"
               tooltip={breakdown.issue_health_score >= 80
-                ? "Maintainer is responsive — most issues get addressed."
+                ? "Maintainer is responsive - most issues get addressed."
                 : breakdown.issue_health_score >= 40
                   ? "Growing backlog of open issues. Check if your critical issues are being tracked."
                   : "High ratio of unresolved issues. Maintainer may be unresponsive."} />
             <ScoreBar score={breakdown.contributor_score} weight="15%" label="Contributors (90d)"
               tooltip={breakdown.contributor_score >= 80
-                ? "Healthy bus factor — multiple active contributors."
+                ? "Healthy bus factor - multiple active contributors."
                 : breakdown.contributor_score >= 40
                   ? "Few recent contributors. Single point of failure risk."
                   : "Zero or one contributor in 90 days. High risk of sudden abandonment."} />
             <ScoreBar score={breakdown.pr_velocity_score} weight="10%" label="PR Velocity"
               tooltip={breakdown.pr_velocity_score >= 80
-                ? "PRs merge quickly — contributions are welcome and reviewed."
+                ? "PRs merge quickly - contributions are welcome and reviewed."
                 : breakdown.pr_velocity_score >= 40
                   ? "PRs take weeks to merge. Community contributions may be ignored."
                   : "PRs take months or never merge. External contributions are effectively blocked."} />
             <ScoreBar score={breakdown.download_trend_score} weight="10%" label="Download Trend"
               tooltip={breakdown.download_trend_score >= 80
-                ? "Growing or stable downloads — the ecosystem trusts this package."
+                ? "Growing or stable downloads - the ecosystem trusts this package."
                 : breakdown.download_trend_score >= 40
                   ? "Downloads declining 10-30%. The ecosystem may be shifting to alternatives."
                   : "Downloads dropping fast. Developers are actively migrating away."} />
             <ScoreBar score={breakdown.maintainer_score} weight="5%" label="Maintainers"
               tooltip={breakdown.maintainer_score >= 80
-                ? "Multiple maintainers — reduced single-point-of-failure risk."
+                ? "Multiple maintainers - reduced single-point-of-failure risk."
                 : "Single maintainer. If they leave, the package dies. Plan accordingly."} />
           </div>
           {breakdown.security_penalty < 1 && (
