@@ -485,6 +485,18 @@ function ExpandedDetails({
             <SignalItem label="Multiple maintainers" value={signals.has_multiple_maintainers !== null ? (signals.has_multiple_maintainers ? "Yes" : "No") : null} />
             <SignalItem label="Unpatched CVEs" value={String(signals.unresolved_cves)} />
             <LicenseBadge license={signals.license} />
+            {signals.is_mature && (
+              <div className="flex items-start gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-blue-400" />
+                <div>
+                  <div className="text-xs text-gray-500">Status</div>
+                  <div className="text-sm font-medium text-blue-400">
+                    Mature / Complete
+                    <span className="text-gray-600 text-xs ml-1">(stable, widely used, low issues)</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

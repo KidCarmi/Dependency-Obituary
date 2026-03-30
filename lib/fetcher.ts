@@ -52,7 +52,7 @@ import {
   fetchPubPackage,
 } from "@/lib/npm";
 import type { MavenSearchResult } from "@/lib/npm";
-import { scorePackage } from "@/lib/scorer";
+import { scorePackage, isMaturePackage } from "@/lib/scorer";
 
 // ─── Adaptive Delay ─────────────────────────────────────────────────────────
 
@@ -233,6 +233,7 @@ function buildSignalsResponse(signals: PackageSignals, license: string | null): 
     has_multiple_maintainers: signals.hasMultipleMaintainers,
     unresolved_cves: signals.unresolvedCves,
     license,
+    is_mature: isMaturePackage(signals),
   };
 }
 
