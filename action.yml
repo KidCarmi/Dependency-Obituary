@@ -16,7 +16,7 @@ inputs:
   api-url:
     description: "API base URL"
     required: false
-    default: "https://dependency-obituary.vercel.app"
+    default: "https://dependency-obituary.orelsec.com"
 
 runs:
   using: "composite"
