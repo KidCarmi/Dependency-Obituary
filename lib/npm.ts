@@ -59,7 +59,16 @@ function isAllowedRegistryUrl(url: string): boolean {
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
 async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
-  if (!isAllowedRegistryUrl(url)) {
+  // Validate URL against allowlist - CodeQL SSRF mitigation
+  let validatedUrl: string;
+  try {
+    const parsed = new URL(url);
+    if (!ALLOWED_REGISTRY_HOSTNAMES.has(parsed.hostname)) {
+      return { success: false, error: "network_error" };
+    }
+    // Reconstruct from parsed URL to prevent injection
+    validatedUrl = parsed.toString();
+  } catch {
     return { success: false, error: "network_error" };
   }
 
@@ -67,7 +76,7 @@ async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(validatedUrl, { signal: controller.signal });
 
     if (res.status === 404) {
       return { success: false, error: "not_found" };
