@@ -217,6 +217,7 @@ export interface NpmPackageData {
     latest?: string;
   };
   time?: Record<string, string>;
+  versions?: Record<string, { license?: string | { type?: string } }>;
 }
 
 export interface NpmDownloadsData {
