@@ -40,6 +40,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  await redis.set(settingsKey(githubId), JSON.stringify(body));
+  // Validate settings structure
+  const obj = body as Record<string, unknown>;
+  const sanitized = {
+    warning_threshold: Math.max(10, Math.min(90, Number(obj.warning_threshold) || 60)),
+    critical_threshold: Math.max(5, Math.min(80, Number(obj.critical_threshold) || 40)),
+    max_packages: Math.max(5, Math.min(200, Number(obj.max_packages) || 50)),
+    comment_behavior: ["always", "warnings_only", "silent"].includes(obj.comment_behavior as string)
+      ? obj.comment_behavior
+      : "always",
+  };
+
+  await redis.set(settingsKey(githubId), JSON.stringify(sanitized));
   return NextResponse.json({ ok: true });
 }

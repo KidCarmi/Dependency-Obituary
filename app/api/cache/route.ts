@@ -14,7 +14,7 @@ import { redis } from "@/lib/cache";
 export async function DELETE(request: Request): Promise<NextResponse> {
   // Simple secret-based auth for cache flush
   const secret = request.headers.get("x-cache-secret");
-  const expectedSecret = process.env.CACHE_FLUSH_SECRET || process.env.AUTH_SECRET;
+  const expectedSecret = process.env.CACHE_FLUSH_SECRET;
 
   if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
