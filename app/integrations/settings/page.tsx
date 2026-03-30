@@ -68,12 +68,18 @@ export default function BotSettingsPage(): React.ReactElement {
 
   return (
     <main className="min-h-screen p-8 max-w-2xl mx-auto">
-      <Link
-        href="/integrations"
-        className="text-sm text-gray-400 hover:text-white transition-colors"
-      >
-        &larr; Back to integrations
-      </Link>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-900 rounded-lg p-1 w-fit">
+        <Link
+          href="/integrations"
+          className="px-4 py-1.5 text-sm rounded-md text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          Overview
+        </Link>
+        <span className="px-4 py-1.5 text-sm rounded-md bg-gray-800 text-white">
+          Settings
+        </span>
+      </div>
 
       <h1 className="text-2xl font-bold mt-6 mb-2">Bot Settings</h1>
       <p className="text-sm text-gray-500 mb-8">

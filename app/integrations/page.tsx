@@ -57,8 +57,23 @@ export default function IntegrationsPage(): React.ReactElement {
         &larr; Back
       </Link>
 
+      {/* Tabs */}
+      {session && (
+        <div className="flex gap-1 mt-6 mb-8 bg-gray-900 rounded-lg p-1 w-fit">
+          <span className="px-4 py-1.5 text-sm rounded-md bg-gray-800 text-white">
+            Overview
+          </span>
+          <Link
+            href="/integrations/settings"
+            className="px-4 py-1.5 text-sm rounded-md text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Settings
+          </Link>
+        </div>
+      )}
+
       {/* Hero */}
-      <div className="mt-8 mb-12 text-center">
+      <div className="mb-12 text-center">
         <h1 className="text-3xl font-bold mb-3">GitHub App</h1>
         <p className="text-gray-400 max-w-lg mx-auto">
           Get automatic dependency health reports on every pull request.
@@ -121,18 +136,6 @@ export default function IntegrationsPage(): React.ReactElement {
           </div>
         ))}
       </div>
-
-      {/* Settings link */}
-      {session && (
-        <div className="text-center mb-8">
-          <Link
-            href="/integrations/settings"
-            className="text-xs text-gray-500 hover:text-blue-400 transition-colors"
-          >
-            Configure bot thresholds and behavior &rarr;
-          </Link>
-        </div>
-      )}
 
       {/* CTA */}
       <div className="text-center pb-12">
