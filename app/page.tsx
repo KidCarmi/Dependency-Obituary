@@ -9,7 +9,7 @@ import ResultsDashboard from "./results/ResultsDashboard";
 type AppState =
   | { step: "upload" }
   | { step: "parsed"; ecosystem: Ecosystem; packages: Package[]; filename: string }
-  | { step: "loading"; ecosystem: Ecosystem; packages: Package[]; filename: string }
+  | { step: "loading"; ecosystem: Ecosystem; packages: Package[]; filename: string; progress?: number }
   | { step: "results"; data: AnalyzeResponse; ecosystem: Ecosystem; packages: Package[]; filename: string }
   | { step: "error"; message: string };
 
@@ -92,14 +92,42 @@ export default function HomePage(): React.ReactElement {
     setState({ step: "loading", ecosystem, packages, filename });
 
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ecosystem, packages }),
-      });
+      // Process in chunks of 20 to avoid Vercel 10s timeout
+      const CHUNK_SIZE = 20;
+      const allResults: AnalyzeResponse["results"] = [];
+      let totalCacheHits = 0;
+      let totalDegraded = 0;
 
-      const data: AnalyzeResponse = await res.json();
-      setState({ step: "results", data, ecosystem, packages, filename });
+      for (let i = 0; i < packages.length; i += CHUNK_SIZE) {
+        const chunk = packages.slice(i, i + CHUNK_SIZE);
+        setState((prev) =>
+          prev.step === "loading"
+            ? { ...prev, progress: Math.round(((i + chunk.length) / packages.length) * 100) }
+            : prev
+        );
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ecosystem, packages: chunk }),
+        });
+
+        const data: AnalyzeResponse = await res.json();
+        allResults.push(...data.results);
+        totalCacheHits += Math.round(data.meta.cache_hit_rate * chunk.length);
+        totalDegraded += data.meta.degraded_count;
+      }
+
+      const combined: AnalyzeResponse = {
+        meta: {
+          analyzed_at: new Date().toISOString(),
+          cache_hit_rate: packages.length > 0 ? totalCacheHits / packages.length : 0,
+          degraded_count: totalDegraded,
+          github_rate_limit: { remaining: 0, used: 0, resetAt: "" },
+        },
+        results: allResults,
+      };
+
+      setState({ step: "results", data: combined, ecosystem, packages, filename });
     } catch {
       setState({ step: "error", message: "Analysis failed. Please try again." });
     }
@@ -275,7 +303,20 @@ export default function HomePage(): React.ReactElement {
           {state.step === "loading" && (
             <div className="mt-8">
               <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-gray-400 mt-3">Analyzing dependencies...</p>
+              <p className="text-gray-400 mt-3">
+                Analyzing {state.packages.length} dependencies...
+              </p>
+              {state.progress !== undefined && state.packages.length > 20 && (
+                <div className="mt-3 max-w-xs mx-auto">
+                  <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                      style={{ width: `${state.progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{state.progress}%</p>
+                </div>
+              )}
             </div>
           )}
 
