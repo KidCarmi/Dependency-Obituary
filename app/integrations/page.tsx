@@ -22,7 +22,7 @@ const SAMPLE_COMMENT = `## 🪦 Dependency Obituary
 const FEATURES = [
   {
     title: "Auto-analyzes PRs",
-    desc: "Every PR that touches a dependency file gets a health report comment — automatically.",
+    desc: "Every PR that touches a dependency file gets a health report comment - automatically.",
   },
   {
     title: "Updates on push",
@@ -34,7 +34,7 @@ const FEATURES = [
   },
   {
     title: "Per-repo rate limits",
-    desc: "Uses its own API quota — doesn't consume your personal GitHub token.",
+    desc: "Uses its own API quota - doesn't consume your personal GitHub token.",
   },
 ];
 

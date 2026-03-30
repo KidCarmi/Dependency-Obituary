@@ -34,7 +34,7 @@ const STEPS = [
   {
     num: "2",
     title: "We fetch the signals",
-    desc: "Commits, releases, contributors, downloads, CVEs — all from public APIs.",
+    desc: "Commits, releases, contributors, downloads, CVEs - all from public APIs.",
   },
   {
     num: "3",

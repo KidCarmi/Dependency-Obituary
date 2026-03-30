@@ -19,7 +19,7 @@ A maintainer went dark 14 months ago. Issues are stacking up. The last PR sat op
 
 ## How it works
 
-Drop your dependency file. Get back an honest health report for every dependency — scored on real signals, not opinions.
+Drop your dependency file. Get back an honest health report for every dependency - scored on real signals, not opinions.
 
 **Supports:** `package.json` `requirements.txt` `Cargo.toml` `go.mod` `Gemfile`
 
@@ -44,7 +44,7 @@ Every package gets a score from **0 (dead) to 100 (thriving)** based on public d
 | Maintainer count | 5% | Bus factor |
 | **Unresolved CVEs** | **Multiplier** | Security advisories tank the score |
 
-When a signal has no data (e.g. GitHub rate-limited), its weight is redistributed to signals with real data — no unfair penalties for missing API data.
+When a signal has no data (e.g. GitHub rate-limited), its weight is redistributed to signals with real data - no unfair penalties for missing API data.
 
 ---
 
@@ -64,7 +64,7 @@ When a signal has no data (e.g. GitHub rate-limited), its weight is redistribute
 
 ### Web app
 
-Visit **[dependency-obituary.orelsec.com](https://dependency-obituary.orelsec.com)** — drop your file, done.
+Visit **[dependency-obituary.orelsec.com](https://dependency-obituary.orelsec.com)** - drop your file, done.
 
 Click any package row to see a full score breakdown with per-signal bars and explanations.
 
@@ -122,8 +122,8 @@ Supported ecosystems: `npm`, `pypi`, `cargo`, `go`, `rubygems`
 
 Sign in with GitHub to unlock:
 
-- **Watchlist** — save dependency lists and re-check them from a dashboard
-- **Better scores** — per-user GitHub tokens mean no shared rate limits
+- **Watchlist** - save dependency lists and re-check them from a dashboard
+- **Better scores** - per-user GitHub tokens mean no shared rate limits
 
 Anonymous file analysis works without sign-in. Auth is purely opt-in.
 
@@ -181,7 +181,7 @@ Browser                              Server
 - Concurrent batch processing (5 packages at a time via `Promise.all`)
 - Adaptive throttle reads `x-ratelimit-remaining` and adjusts delay
 - Null signal weights redistributed to signals with real data
-- Never caches degraded results — stale entries auto-deleted on read
+- Never caches degraded results - stale entries auto-deleted on read
 - Versioned cache keys (`v2:dep:...`) for algorithm changes
 - 131 tests passing (scorer at 100% coverage)
 
@@ -201,13 +201,13 @@ npm run build        # Production build
 ## FAQ
 
 **Is this a replacement for `npm audit`?**
-No. `npm audit` catches known CVEs. We catch abandonment — the slow death that security scanners miss. Use both.
+No. `npm audit` catches known CVEs. We catch abandonment - the slow death that security scanners miss. Use both.
 
 **What ecosystems are supported?**
 npm (package.json), PyPI (requirements.txt), Cargo (Cargo.toml), Go (go.mod), RubyGems (Gemfile).
 
 **How accurate is the score?**
-It's objective, not infallible. We always show raw signals alongside the score — you apply the judgment. When GitHub data is unavailable, scores are based on registry data only.
+It's objective, not infallible. We always show raw signals alongside the score - you apply the judgment. When GitHub data is unavailable, scores are based on registry data only.
 
 **What if GitHub is rate-limited?**
 The app degrades gracefully. Null signal weights are redistributed to available signals. Never a crash, never a 500.
