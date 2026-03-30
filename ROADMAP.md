@@ -33,6 +33,18 @@
 - [ ] VS Code extension — deferred (needs separate repo + marketplace publishing)
 - [ ] API key system — deferred (requires auth, needs discussion per CLAUDE.md)
 
-## v2.0 — Monitoring *(requires user discussion before building)*
-- Opt-in project monitoring — saved package lists, weekly digest email
-- GitHub App — automatic PR comments with health scores on dependency updates
+## v2.0 — Monitoring (done)
+- [x] GitHub OAuth via NextAuth.js — sign in with GitHub, JWT sessions
+- [x] NavBar with sign-in button / avatar dropdown (top-right)
+- [x] Watchlist API — save/load/delete monitored package lists (Redis)
+- [x] Dashboard page — view saved projects, run on-demand checks
+- [x] "Save to watchlist" button on results page (signed-in users only)
+- [x] Anonymous mode preserved — file upload works without sign-in
+- [ ] Weekly digest email — deferred (needs email service integration)
+- [ ] GitHub App for PR comments — deferred (needs separate App registration)
+
+## v2.1 — Future
+- More IDPs — Azure AD, GitLab, Bitbucket
+- More CI — Azure Pipelines task, GitLab CI template
+- Per-user GitHub tokens for API calls (use signed-in user's token)
+- Weekly digest via email service (Resend, SendGrid, etc.)
