@@ -20,7 +20,7 @@ function watchlistKey(githubId: number): string {
 async function getGithubId(): Promise<number | null> {
   const session = await auth();
   if (!session?.user) return null;
-  return (session.user as Record<string, unknown>).githubId as number ?? null;
+  return (session.user as unknown as Record<string, unknown>).githubId as number ?? null;
 }
 
 // ─── GET — List watchlist ──────────────────────────────────────────────────

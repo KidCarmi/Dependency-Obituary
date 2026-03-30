@@ -73,7 +73,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       const session = await auth();
       if (session) {
-        userGithubToken = (session as Record<string, unknown>).accessToken as string | undefined;
+        userGithubToken = (session as unknown as Record<string, unknown>).accessToken as string | undefined;
       }
     } catch {
       // Auth not configured or failed — use shared token
