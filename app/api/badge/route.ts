@@ -79,7 +79,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const ecosystem = searchParams.get("ecosystem") || "npm";
   const packageName = searchParams.get("package");
 
-  if (!packageName || !SAFE_PACKAGE_NAME.test(packageName)) {
+  if (!packageName || packageName.length > 214 || !SAFE_PACKAGE_NAME.test(packageName)) {
     return new NextResponse(
       buildSvg("error", null, "unknown"),
       {
