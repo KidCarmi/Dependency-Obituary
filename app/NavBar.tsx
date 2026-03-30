@@ -75,7 +75,7 @@ export default function NavBar(): React.ReactElement {
                       {session.user.name}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
-                      {(session.user as Record<string, unknown>).login as string || session.user.email}
+                      {(session.user as unknown as Record<string, unknown>).login as string || session.user.email}
                     </p>
                   </div>
                   <Link

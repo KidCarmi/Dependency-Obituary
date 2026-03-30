@@ -8,6 +8,8 @@
  *  - Only approved endpoints (see CLAUDE.md)
  *  - All functions return FetchResult<T>
  *  - 8s timeout on all fetches
+ *  - Per-user token override: when a signed-in user's OAuth token is
+ *    available, use it instead of the shared token for better rate limits
  */
 
 import type {
@@ -31,14 +33,16 @@ if (!GITHUB_TOKEN) {
   );
 }
 
-const GITHUB_HEADERS = {
-  Accept: "application/vnd.github+json",
-  "X-GitHub-Api-Version": "2022-11-28",
-  Authorization: `Bearer ${GITHUB_TOKEN}`,
-} as const;
-
 const GITHUB_API = "https://api.github.com";
 const TIMEOUT_MS = 8000;
+
+function buildHeaders(token?: string): Record<string, string> {
+  return {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    Authorization: `Bearer ${token || GITHUB_TOKEN}`,
+  };
+}
 
 // ─── Rate Limit Extraction ──────────────────────────────────────────────────
 
@@ -75,13 +79,13 @@ export function parseGitHubUrl(
 
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
-async function githubFetch<T>(url: string): Promise<FetchResult<T>> {
+async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<T>> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
     const res = await fetch(url, {
-      headers: GITHUB_HEADERS,
+      headers: buildHeaders(token),
       signal: controller.signal,
     });
 
@@ -124,28 +128,34 @@ async function githubFetch<T>(url: string): Promise<FetchResult<T>> {
 
 export async function fetchRepoMetadata(
   owner: string,
-  repo: string
+  repo: string,
+  token?: string
 ): Promise<FetchResult<GitHubRepoMetadata>> {
   return githubFetch<GitHubRepoMetadata>(
-    `${GITHUB_API}/repos/${owner}/${repo}`
+    `${GITHUB_API}/repos/${owner}/${repo}`,
+    token
   );
 }
 
 export async function fetchLastCommit(
   owner: string,
-  repo: string
+  repo: string,
+  token?: string
 ): Promise<FetchResult<GitHubCommit[]>> {
   return githubFetch<GitHubCommit[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/commits?per_page=1`
+    `${GITHUB_API}/repos/${owner}/${repo}/commits?per_page=1`,
+    token
   );
 }
 
 export async function fetchContributors(
   owner: string,
-  repo: string
+  repo: string,
+  token?: string
 ): Promise<FetchResult<GitHubContributor[]>> {
   const result = await githubFetch<GitHubContributor[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`
+    `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`,
+    token
   );
 
   // GitHub returns 202 when computing stats asynchronously.
@@ -153,7 +163,8 @@ export async function fetchContributors(
   if (!result.success && result.error === "not_found") {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return githubFetch<GitHubContributor[]>(
-      `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`
+      `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`,
+      token
     );
   }
 
@@ -162,18 +173,22 @@ export async function fetchContributors(
 
 export async function fetchRecentPRs(
   owner: string,
-  repo: string
+  repo: string,
+  token?: string
 ): Promise<FetchResult<GitHubPullRequest[]>> {
   return githubFetch<GitHubPullRequest[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=closed&per_page=20`
+    `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=closed&per_page=20`,
+    token
   );
 }
 
 export async function fetchSecurityAdvisories(
   owner: string,
-  repo: string
+  repo: string,
+  token?: string
 ): Promise<FetchResult<GitHubSecurityAdvisory[]>> {
   return githubFetch<GitHubSecurityAdvisory[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/security-advisories`
+    `${GITHUB_API}/repos/${owner}/${repo}/security-advisories`,
+    token
   );
 }

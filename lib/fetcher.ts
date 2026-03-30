@@ -239,7 +239,8 @@ interface FetchPackageResult {
 
 async function fetchPackageHealth(
   pkg: Package,
-  ecosystem: Ecosystem
+  ecosystem: Ecosystem,
+  githubToken?: string
 ): Promise<FetchPackageResult> {
   let latestRateLimit: RateLimitState | null = null;
 
@@ -447,11 +448,11 @@ async function fetchPackageHealth(
         const { owner, repo } = parsed;
         const [metaResult, commitResult, contribResult, prResult, advResult] =
           await Promise.all([
-            fetchRepoMetadata(owner, repo),
-            fetchLastCommit(owner, repo),
-            fetchContributors(owner, repo),
-            fetchRecentPRs(owner, repo),
-            fetchSecurityAdvisories(owner, repo),
+            fetchRepoMetadata(owner, repo, githubToken),
+            fetchLastCommit(owner, repo, githubToken),
+            fetchContributors(owner, repo, githubToken),
+            fetchRecentPRs(owner, repo, githubToken),
+            fetchSecurityAdvisories(owner, repo, githubToken),
           ]);
 
         // Track rate limit from any successful response
@@ -516,7 +517,8 @@ export async function fetchBatched(
   packages: Package[],
   ecosystem: Ecosystem,
   batchSize: number = 5,
-  initialDelayMs: number = 200
+  initialDelayMs: number = 200,
+  githubToken?: string
 ): Promise<HealthResult[]> {
   const results: HealthResult[] = [];
   let currentRateLimit: RateLimitState = {
@@ -563,7 +565,7 @@ export async function fetchBatched(
         }
 
         // Fetch fresh data
-        const fetchResult = await fetchPackageHealth(pkg, ecosystem);
+        const fetchResult = await fetchPackageHealth(pkg, ecosystem, githubToken);
 
         // Only cache successful (non-degraded) results
         if (fetchResult.result.data_confidence !== "unavailable") {
