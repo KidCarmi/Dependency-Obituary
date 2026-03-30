@@ -10,7 +10,7 @@
  *  - Formula weights are defined in SYSTEM_DESIGN.md. Do not change them here.
  */
 
-import type { PackageSignals, RiskLevel, ScoredPackage } from "@/types";
+import type { PackageSignals, RiskLevel, ScoredPackage, ScoreBreakdown } from "@/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -155,43 +155,92 @@ export function classifyRisk(healthScore: number): RiskLevel {
  * It must remain pure and side-effect free.
  */
 export function scorePackage(signals: PackageSignals): ScoredPackage {
-  const commitScore = scoreCommits(signals.daysSinceLastCommit);
-  const releaseScore = scoreRelease(signals.daysSinceLastRelease);
-  const issueHealthScore = scoreIssueHealth(signals.openIssues, signals.closedIssues);
-  const contributorScore = scoreContributors(signals.contributorCount90d);
-  const prVelocityScore = scorePrVelocity(signals.prMergeVelocityDays);
-  const downloadTrendScore = scoreDownloadTrend(
-    signals.weeklyDownloads,
-    signals.weeklyDownloads12wAgo
-  );
-  const maintainerScore = scoreMaintainers(signals.hasMultipleMaintainers);
   const securityPenalty = calculateSecurityPenalty(signals.unresolvedCves);
 
-  const weightedSum =
-    commitScore       * 0.25 +
-    releaseScore      * 0.20 +
-    issueHealthScore  * 0.15 +
-    contributorScore  * 0.15 +
-    prVelocityScore   * 0.10 +
-    downloadTrendScore * 0.10 +
-    maintainerScore   * 0.05;
+  // Each signal: { score, weight, hasData }
+  // When hasData is false, its weight is redistributed to signals with real data.
+  // This prevents null GitHub signals from dragging scores down unfairly.
+  const signalEntries: Array<{
+    key: keyof ScoreBreakdown;
+    score: number;
+    weight: number;
+    hasData: boolean;
+  }> = [
+    {
+      key: "commitScore",
+      score: scoreCommits(signals.daysSinceLastCommit),
+      weight: 0.25,
+      hasData: signals.daysSinceLastCommit !== null,
+    },
+    {
+      key: "releaseScore",
+      score: scoreRelease(signals.daysSinceLastRelease),
+      weight: 0.20,
+      hasData: signals.daysSinceLastRelease !== null,
+    },
+    {
+      key: "issueHealthScore",
+      score: scoreIssueHealth(signals.openIssues, signals.closedIssues),
+      weight: 0.15,
+      hasData: signals.openIssues !== null && signals.closedIssues !== null,
+    },
+    {
+      key: "contributorScore",
+      score: scoreContributors(signals.contributorCount90d),
+      weight: 0.15,
+      hasData: signals.contributorCount90d !== null,
+    },
+    {
+      key: "prVelocityScore",
+      score: scorePrVelocity(signals.prMergeVelocityDays),
+      weight: 0.10,
+      hasData: signals.prMergeVelocityDays !== null,
+    },
+    {
+      key: "downloadTrendScore",
+      score: scoreDownloadTrend(signals.weeklyDownloads, signals.weeklyDownloads12wAgo),
+      weight: 0.10,
+      hasData: signals.weeklyDownloads !== null && signals.weeklyDownloads12wAgo !== null,
+    },
+    {
+      key: "maintainerScore",
+      score: scoreMaintainers(signals.hasMultipleMaintainers),
+      weight: 0.05,
+      hasData: signals.hasMultipleMaintainers !== null,
+    },
+  ];
+
+  // Redistribute null signal weights to signals with real data
+  const totalDataWeight = signalEntries
+    .filter((s) => s.hasData)
+    .reduce((sum, s) => sum + s.weight, 0);
+
+  let weightedSum = 0;
+  for (const entry of signalEntries) {
+    if (entry.hasData && totalDataWeight > 0) {
+      // Scale weight proportionally so available signals sum to 1.0
+      weightedSum += entry.score * (entry.weight / totalDataWeight);
+    } else if (!entry.hasData && totalDataWeight === 0) {
+      // All signals null — use fallbacks with original weights
+      weightedSum += entry.score * entry.weight;
+    }
+  }
 
   const healthScore = clamp(weightedSum * securityPenalty);
   const riskLevel = classifyRisk(healthScore);
 
-  return {
-    healthScore,
-    riskLevel,
-    breakdown: {
-      commitScore,
-      releaseScore,
-      issueHealthScore,
-      contributorScore,
-      prVelocityScore,
-      downloadTrendScore,
-      maintainerScore,
-      securityPenalty,
-      weightedSum: clamp(weightedSum),
-    },
+  // Build breakdown using individual scores (including fallbacks for display)
+  const breakdown: ScoreBreakdown = {
+    commitScore: signalEntries[0].score,
+    releaseScore: signalEntries[1].score,
+    issueHealthScore: signalEntries[2].score,
+    contributorScore: signalEntries[3].score,
+    prVelocityScore: signalEntries[4].score,
+    downloadTrendScore: signalEntries[5].score,
+    maintainerScore: signalEntries[6].score,
+    securityPenalty,
+    weightedSum: clamp(weightedSum),
   };
+
+  return { healthScore, riskLevel, breakdown };
 }

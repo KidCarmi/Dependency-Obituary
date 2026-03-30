@@ -147,10 +147,9 @@ Formula defined in `SYSTEM_DESIGN.md` — do not change weights:
 GITHUB_TOKEN=ghp_...                    # Required — throws at startup
 UPSTASH_REDIS_REST_URL=https://...      # Required
 UPSTASH_REDIS_REST_TOKEN=...            # Required
-GITHUB_CLIENT_ID=...                    # Optional — GitHub OAuth (auth disabled if missing)
-GITHUB_CLIENT_SECRET=...                # Optional — GitHub OAuth
-NEXTAUTH_SECRET=...                     # Required if auth enabled
-NEXTAUTH_URL=https://...                # Required if auth enabled
+AUTH_GITHUB_ID=...                      # Optional — GitHub OAuth (auth disabled if missing)
+AUTH_GITHUB_SECRET=...                  # Optional — GitHub OAuth
+AUTH_SECRET=...                         # Required if auth enabled (openssl rand -hex 32)
 USE_MOCK_DATA=false                     # Dev only — NEVER in production
 ```
 

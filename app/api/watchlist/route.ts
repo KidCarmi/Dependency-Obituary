@@ -9,8 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redis } from "@/lib/cache";
 import type { WatchlistEntry, Package, Ecosystem } from "@/types";
 
@@ -18,15 +17,10 @@ function watchlistKey(githubId: number): string {
   return `user:${githubId}:watchlist`;
 }
 
-interface SessionWithGithub {
-  user?: {
-    githubId?: number;
-  };
-}
-
 async function getGithubId(): Promise<number | null> {
-  const session = (await getServerSession(authOptions)) as SessionWithGithub | null;
-  return session?.user?.githubId ?? null;
+  const session = await auth();
+  if (!session?.user) return null;
+  return (session.user as Record<string, unknown>).githubId as number ?? null;
 }
 
 // ─── GET — List watchlist ──────────────────────────────────────────────────
