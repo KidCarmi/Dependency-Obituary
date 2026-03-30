@@ -23,7 +23,7 @@ jobs:
         run: npm run lint
 
   test:
-    name: Tests
+    name: Tests (144)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +35,9 @@ jobs:
       - name: Run tests
         run: npm run test
 
-  security:
-    name: Security Audit
+  # ─── SCA: Software Composition Analysis ────────────────────────────────
+  sca:
+    name: SCA - Dependency Vulnerabilities
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,55 +46,80 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-
-      - name: npm audit
+      - name: npm audit (high + critical)
         run: npm audit --audit-level=high
+
+  # ─── Gitleaks: Secret Detection ─────────────────────────────────────────
+  gitleaks:
+    name: Gitleaks - Secret Scanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── CodeQL: SAST ──────────────────────────────────────────────────────
+  codeql:
+    name: CodeQL - SAST Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ─── Custom Security Checks ────────────────────────────────────────────
+  security-checks:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Check for hardcoded secrets
         run: |
-          echo "Checking for hardcoded secrets..."
-          # Check for common secret patterns
+          echo "Scanning for hardcoded secrets..."
           FOUND=0
-          for pattern in "ghp_[A-Za-z0-9]" "sk_live_" "sk_test_" "AKIA[A-Z0-9]" "password\s*=\s*['\"][^'\"]+['\"]"; do
+          for pattern in "ghp_[A-Za-z0-9]{36}" "sk_live_" "sk_test_" "AKIA[A-Z0-9]{16}" "-----BEGIN.*PRIVATE KEY-----"; do
             MATCHES=$(grep -rn "$pattern" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" . \
-              --exclude-dir=node_modules --exclude-dir=.next --exclude=package-lock.json || true)
+              --exclude-dir=node_modules --exclude-dir=.next --exclude=package-lock.json --exclude=.env.example || true)
             if [ -n "$MATCHES" ]; then
-              echo "POTENTIAL SECRET FOUND for pattern: $pattern"
+              echo "::error::POTENTIAL SECRET for pattern: $pattern"
               echo "$MATCHES"
               FOUND=1
             fi
           done
-          if [ "$FOUND" -eq 1 ]; then
-            echo "::error::Potential hardcoded secrets detected. Review the output above."
-            exit 1
-          fi
-          echo "No hardcoded secrets found."
+          if [ "$FOUND" -eq 1 ]; then exit 1; fi
+          echo "No hardcoded secrets found. ✓"
 
       - name: Check for env var leaks in client code
         run: |
-          echo "Checking for process.env in client components..."
+          echo "Scanning client components for server env vars..."
           FOUND=0
-          for f in $(grep -rl "use client" app/ --include="*.tsx" --include="*.ts" 2>/dev/null || true); do
-            ENVS=$(grep -n "process\.env" "$f" || true)
+          for f in $(grep -rl '"use client"' app/ --include="*.tsx" --include="*.ts" 2>/dev/null || true); do
+            ENVS=$(grep -n "process\.env" "$f" | grep -v "NEXT_PUBLIC_" || true)
             if [ -n "$ENVS" ]; then
-              # Allow NEXT_PUBLIC_ vars in client code
-              NON_PUBLIC=$(echo "$ENVS" | grep -v "NEXT_PUBLIC_" || true)
-              if [ -n "$NON_PUBLIC" ]; then
-                echo "SERVER ENV VAR IN CLIENT CODE: $f"
-                echo "$NON_PUBLIC"
-                FOUND=1
-              fi
+              echo "::error::Server env var in client code: $f"
+              echo "$ENVS"
+              FOUND=1
             fi
           done
-          if [ "$FOUND" -eq 1 ]; then
-            echo "::error::Server environment variables exposed in client code."
-            exit 1
-          fi
-          echo "No env var leaks found."
+          if [ "$FOUND" -eq 1 ]; then exit 1; fi
+          echo "No env var leaks found. ✓"
 
-      - name: Check .gitignore covers sensitive files
+      - name: Verify .gitignore protects secrets
         run: |
-          echo "Verifying .gitignore protections..."
           for f in ".env" ".env.local"; do
             if git check-ignore -q "$f" 2>/dev/null; then
               echo "$f: IGNORED ✓"
@@ -102,12 +128,32 @@ jobs:
               exit 1
             fi
           done
-          echo "All sensitive files are gitignored."
 
+      - name: Check for dangerous patterns
+        run: |
+          echo "Scanning for dangerous code patterns..."
+          FOUND=0
+          # Check for eval, innerHTML, dangerouslySetInnerHTML
+          for pattern in "eval(" "new Function(" "dangerouslySetInnerHTML" "\.innerHTML\s*="; do
+            MATCHES=$(grep -rn "$pattern" --include="*.ts" --include="*.tsx" app/ lib/ \
+              --exclude-dir=node_modules || true)
+            if [ -n "$MATCHES" ]; then
+              echo "::warning::Dangerous pattern found: $pattern"
+              echo "$MATCHES"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -eq 1 ]; then
+            echo "::warning::Review dangerous patterns above. These may be intentional."
+          else
+            echo "No dangerous patterns found. ✓"
+          fi
+
+  # ─── Build ─────────────────────────────────────────────────────────────
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint-typecheck, test]
+    needs: [lint-typecheck, test, sca, security-checks]
     env:
       GITHUB_TOKEN: fake_token_for_build
       UPSTASH_REDIS_REST_URL: https://fake.upstash.io
