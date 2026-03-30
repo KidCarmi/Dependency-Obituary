@@ -2,8 +2,7 @@
  * GET /api/activity — Fetch PR activity feed
  *
  * Returns recent PR analysis events from the GitHub App.
- * No auth required — events are keyed by installation ID.
- * Query param: installation_id (optional, defaults to "global")
+ * Scans all feed:* keys in Redis to find events across installations.
  */
 
 import { NextResponse } from "next/server";
@@ -20,17 +19,32 @@ interface ActivityEvent {
   timestamp: string;
 }
 
-export async function GET(request: Request): Promise<NextResponse> {
-  const { searchParams } = new URL(request.url);
-  const installationId = searchParams.get("installation_id") || "global";
+export async function GET(): Promise<NextResponse> {
+  const allEvents: ActivityEvent[] = [];
 
-  const feedKey = `feed:${installationId}`;
-  const raw = await redis.lrange(feedKey, 0, 49);
+  // Scan for all feed:* keys
+  let cursor = 0;
+  do {
+    const [nextCursor, keys] = await redis.scan(cursor, {
+      match: "feed:*",
+      count: 50,
+    });
+    cursor = typeof nextCursor === "string" ? parseInt(nextCursor, 10) : nextCursor;
 
-  const events: ActivityEvent[] = raw.map((item) => {
-    if (typeof item === "string") return JSON.parse(item) as ActivityEvent;
-    return item as ActivityEvent;
-  });
+    for (const key of keys) {
+      const items = await redis.lrange(key as string, 0, 49);
+      for (const item of items) {
+        if (typeof item === "string") {
+          allEvents.push(JSON.parse(item) as ActivityEvent);
+        } else {
+          allEvents.push(item as ActivityEvent);
+        }
+      }
+    }
+  } while (cursor !== 0);
 
-  return NextResponse.json({ events });
+  // Sort by timestamp descending
+  allEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  return NextResponse.json({ events: allEvents.slice(0, 50) });
 }
