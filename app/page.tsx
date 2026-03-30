@@ -47,6 +47,7 @@ export default function HomePage(): React.ReactElement {
   const [state, setState] = useState<AppState>({ step: "upload" });
   const [dragOver, setDragOver] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -61,6 +62,7 @@ export default function HomePage(): React.ReactElement {
       }
       setState({ step: "parsed", ecosystem, packages, filename: file.name });
       setSaved(false);
+      setShareUrl(null);
     };
     reader.readAsText(file);
   }, []);
@@ -120,6 +122,27 @@ export default function HomePage(): React.ReactElement {
     if (res.ok) setSaved(true);
   }, [state]);
 
+  const handleShare = useCallback(async () => {
+    if (state.step !== "results") return;
+
+    const res = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        results: state.data,
+        ecosystem: state.ecosystem,
+        filename: state.filename,
+      }),
+    });
+
+    if (res.ok) {
+      const { id } = await res.json();
+      const url = `${window.location.origin}/share?id=${id}`;
+      setShareUrl(url);
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+  }, [state]);
+
   const handleReset = useCallback(() => {
     setState({ step: "upload" });
   }, []);
@@ -136,19 +159,31 @@ export default function HomePage(): React.ReactElement {
           >
             &larr; Analyze another file
           </button>
-          {session && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleSaveToWatchlist}
-              disabled={saved}
+              onClick={handleShare}
               className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                saved
+                shareUrl
                   ? "bg-green-600/20 text-green-400 cursor-default"
                   : "bg-gray-800 hover:bg-gray-700 text-gray-300"
               }`}
             >
-              {saved ? "Saved to dashboard" : "Save to watchlist"}
+              {shareUrl ? "Link copied!" : "Share report"}
             </button>
-          )}
+            {session && (
+              <button
+                onClick={handleSaveToWatchlist}
+                disabled={saved}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  saved
+                    ? "bg-green-600/20 text-green-400 cursor-default"
+                    : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                }`}
+              >
+                {saved ? "Saved to dashboard" : "Save to watchlist"}
+              </button>
+            )}
+          </div>
         </div>
         <ResultsDashboard data={state.data} />
       </main>
