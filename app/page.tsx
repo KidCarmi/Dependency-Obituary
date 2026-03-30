@@ -13,6 +13,32 @@ type AppState =
   | { step: "results"; data: AnalyzeResponse; ecosystem: Ecosystem; packages: Package[]; filename: string }
   | { step: "error"; message: string };
 
+const ECOSYSTEMS = [
+  { name: "npm", file: "package.json", color: "text-red-400" },
+  { name: "PyPI", file: "requirements.txt", color: "text-blue-400" },
+  { name: "Cargo", file: "Cargo.toml", color: "text-orange-400" },
+  { name: "Go", file: "go.mod", color: "text-cyan-400" },
+  { name: "RubyGems", file: "Gemfile", color: "text-red-300" },
+];
+
+const STEPS = [
+  {
+    num: "1",
+    title: "Drop your file",
+    desc: "Upload any dependency file. It never leaves your browser.",
+  },
+  {
+    num: "2",
+    title: "We fetch the signals",
+    desc: "Commits, releases, contributors, downloads, CVEs — all from public APIs.",
+  },
+  {
+    num: "3",
+    title: "Get the verdict",
+    desc: "Every package scored 0–100 with a full breakdown of why.",
+  },
+];
+
 export default function HomePage(): React.ReactElement {
   const { data: session } = useSession();
   const [state, setState] = useState<AppState>({ step: "upload" });
@@ -126,108 +152,209 @@ export default function HomePage(): React.ReactElement {
     );
   }
 
-  // ─── Upload / Parsed / Loading / Error View ────────────────────────────────
+  // ─── Landing Page ─────────────────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      <div className="max-w-2xl w-full text-center">
-        <h1 className="text-4xl font-bold mb-2 tracking-tight">
-          Dependency Obituary
-        </h1>
-        <p className="text-gray-400 mb-8">
-          Your dependencies are dying. You just don&apos;t know it yet.
-        </p>
+    <main className="min-h-screen">
+      {/* Hero Section */}
+      <section className="flex flex-col items-center justify-center px-8 pt-24 pb-16">
+        <div className="max-w-3xl w-full text-center">
+          <p className="text-sm font-medium text-blue-400 mb-4 tracking-wider uppercase">
+            Dependency Health Scanner
+          </p>
+          <h1 className="text-5xl sm:text-6xl font-bold mb-4 tracking-tight leading-tight">
+            Your dependencies
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400">
+              are dying.
+            </span>
+          </h1>
+          <p className="text-lg text-gray-400 mb-10 max-w-xl mx-auto">
+            npm audit catches CVEs. Dependabot sends PRs.
+            <br />
+            <span className="text-gray-300">Nothing catches abandonment.</span>
+          </p>
 
-        {/* Drop Zone */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          className={`border-2 border-dashed rounded-xl p-12 transition-colors cursor-pointer ${
-            dragOver
-              ? "border-blue-500 bg-blue-500/10"
-              : "border-gray-700 hover:border-gray-500"
-          }`}
-        >
-          <label className="cursor-pointer block">
-            <input
-              type="file"
-              accept=".json,.txt,.toml,.mod,.lock"
-              onChange={handleFileInput}
-              className="hidden"
-            />
-            <div className="text-gray-400">
-              <p className="text-lg mb-2">
-                Drop your dependency file
+          {/* Drop Zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            className={`max-w-xl mx-auto border-2 border-dashed rounded-xl p-10 transition-all cursor-pointer ${
+              dragOver
+                ? "border-blue-500 bg-blue-500/10 scale-[1.02]"
+                : "border-gray-700 hover:border-gray-500"
+            }`}
+          >
+            <label className="cursor-pointer block">
+              <input
+                type="file"
+                accept=".json,.txt,.toml,.mod,.lock"
+                onChange={handleFileInput}
+                className="hidden"
+              />
+              <div className="text-gray-400">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-gray-800 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                </div>
+                <p className="text-base mb-1">
+                  Drop your dependency file here
+                </p>
+                <p className="text-sm text-gray-600">or click to browse</p>
+              </div>
+            </label>
+          </div>
+
+          <p className="text-xs text-gray-600 mt-3">
+            Your file never leaves your browser. Parsed client-side. No account needed.
+          </p>
+
+          {/* Parsed State */}
+          {state.step === "parsed" && (
+            <div className="mt-8 space-y-4">
+              <p className="text-gray-300">
+                Found{" "}
+                <span className="text-white font-semibold">
+                  {state.packages.length}
+                </span>{" "}
+                {state.ecosystem} dependencies
               </p>
-              <p className="text-sm text-gray-500">
-                <code className="text-gray-400">package.json</code>{" "}
-                <code className="text-gray-400">requirements.txt</code>{" "}
-                <code className="text-gray-400">Cargo.toml</code>{" "}
-                <code className="text-gray-400">go.mod</code>{" "}
-                <code className="text-gray-400">Gemfile</code>
-              </p>
-              <p className="text-sm mt-2">or click to browse</p>
+              <button
+                onClick={handleAnalyze}
+                className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors text-lg"
+              >
+                Analyze Health
+              </button>
             </div>
-          </label>
+          )}
+
+          {/* Loading State */}
+          {state.step === "loading" && (
+            <div className="mt-8">
+              <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-gray-400 mt-3">Analyzing dependencies...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {state.step === "error" && (
+            <div className="mt-8 space-y-4">
+              <p className="text-red-400">{state.message}</p>
+              <button
+                onClick={handleReset}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          )}
         </div>
+      </section>
 
-        <p className="text-xs text-gray-600 mt-3">
-          Your file never leaves your browser. We parse it client-side.
+      {/* Supported Ecosystems */}
+      <section className="flex justify-center gap-6 sm:gap-10 pb-16 px-8 flex-wrap">
+        {ECOSYSTEMS.map((eco) => (
+          <div key={eco.name} className="text-center">
+            <p className={`text-sm font-medium ${eco.color}`}>{eco.name}</p>
+            <p className="text-xs text-gray-600 font-mono">{eco.file}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* How It Works */}
+      <section className="max-w-4xl mx-auto px-8 pb-20">
+        <h2 className="text-center text-sm font-medium text-gray-500 uppercase tracking-wider mb-10">
+          How it works
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          {STEPS.map((step) => (
+            <div key={step.num} className="text-center">
+              <div className="w-10 h-10 mx-auto mb-4 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-sm font-bold text-gray-400">
+                {step.num}
+              </div>
+              <h3 className="font-medium mb-2">{step.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Scoring Table */}
+      <section className="max-w-2xl mx-auto px-8 pb-20">
+        <h2 className="text-center text-sm font-medium text-gray-500 uppercase tracking-wider mb-8">
+          What we measure
+        </h2>
+        <div className="border border-gray-800 rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody>
+              {[
+                { signal: "Commit activity", weight: "25%", icon: "green" },
+                { signal: "Release cadence", weight: "20%", icon: "blue" },
+                { signal: "Issue responsiveness", weight: "15%", icon: "yellow" },
+                { signal: "Active contributors", weight: "15%", icon: "orange" },
+                { signal: "PR merge velocity", weight: "10%", icon: "purple" },
+                { signal: "Download trend", weight: "10%", icon: "cyan" },
+                { signal: "Maintainer count", weight: "5%", icon: "pink" },
+              ].map((row, i) => (
+                <tr
+                  key={row.signal}
+                  className={i < 6 ? "border-b border-gray-800/50" : ""}
+                >
+                  <td className="p-3 flex items-center gap-2">
+                    <span
+                      className={`w-2 h-2 rounded-full bg-${row.icon}-400`}
+                    />
+                    {row.signal}
+                  </td>
+                  <td className="p-3 text-right text-gray-500 font-mono">
+                    {row.weight}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-center text-xs text-gray-600 mt-3">
+          Unresolved CVEs apply a security penalty multiplier on top.
         </p>
+      </section>
 
-        <a
-          href="/badge"
-          className="inline-block mt-4 text-xs text-gray-500 hover:text-blue-400 transition-colors"
-        >
-          Want badges for your README? &rarr;
-        </a>
-
-        {/* Parsed State */}
-        {state.step === "parsed" && (
-          <div className="mt-8 space-y-4">
-            <p className="text-gray-300">
-              Found{" "}
-              <span className="text-white font-semibold">
-                {state.packages.length}
-              </span>{" "}
-              {state.ecosystem} dependencies
+      {/* CTA: CI + Badges */}
+      <section className="max-w-4xl mx-auto px-8 pb-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-6 bg-gray-900/50 border border-gray-800 rounded-lg">
+            <h3 className="font-medium mb-2">CI Integration</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Fail builds when dependencies drop below your threshold.
             </p>
-            <button
-              onClick={handleAnalyze}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
-            >
-              Analyze Health
-            </button>
+            <code className="text-xs text-gray-400 bg-gray-800 px-3 py-2 rounded block overflow-x-auto">
+              uses: KidCarmi/Dependency-Obituary@main
+            </code>
           </div>
-        )}
-
-        {/* Loading State */}
-        {state.step === "loading" && (
-          <div className="mt-8">
-            <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-400 mt-3">
-              Analyzing dependencies...
+          <div className="p-6 bg-gray-900/50 border border-gray-800 rounded-lg">
+            <h3 className="font-medium mb-2">README Badges</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Show health scores for any package in your docs.
             </p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {state.step === "error" && (
-          <div className="mt-8 space-y-4">
-            <p className="text-red-400">{state.message}</p>
-            <button
-              onClick={handleReset}
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+            <a
+              href="/badge"
+              className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
             >
-              Try again
-            </button>
+              Generate a badge &rarr;
+            </a>
           </div>
-        )}
-      </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="text-center pb-12 text-xs text-gray-700">
+        Built in public. $0 to run. No VC. No bullshit.
+      </footer>
     </main>
   );
 }
