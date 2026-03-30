@@ -18,14 +18,10 @@ import { auth } from "@/lib/auth";
 
 const MAX_PACKAGES = 500;
 
+const VALID_ECOSYSTEMS = new Set(["npm", "pypi", "cargo", "go", "rubygems", "packagist", "maven", "pub"]);
+
 function isValidEcosystem(value: unknown): value is Ecosystem {
-  return (
-    value === "npm" ||
-    value === "pypi" ||
-    value === "cargo" ||
-    value === "go" ||
-    value === "rubygems"
-  );
+  return typeof value === "string" && VALID_ECOSYSTEMS.has(value);
 }
 
 function isValidPackage(value: unknown): value is Package {
