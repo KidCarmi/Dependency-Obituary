@@ -6,9 +6,9 @@ Read this before writing a single line of code. This is the law.
 
 ## Project Context
 
-**What this is:** A developer tool that parses `package.json` or `requirements.txt` and returns an objective health score for every dependency — detecting abandoned packages before they become a production problem.
+**What this is:** A developer tool that parses dependency files (package.json, requirements.txt, Cargo.toml, go.mod, Gemfile) and returns an objective health score for every dependency — detecting abandoned packages before they become a production problem.
 
-**What this is NOT:** Not a security scanner, not an AI chatbot, not a SaaS with accounts/billing/stored user data.
+**What this is NOT:** Not a security scanner, not an AI chatbot. Auth is optional (GitHub OAuth for monitoring features).
 
 **Core promise:** Zero fake data. Every score is derived from objective, public API signals only. Never fabricate package signals.
 
@@ -19,13 +19,12 @@ Read this before writing a single line of code. This is the law.
 - `"strict": true` in `tsconfig.json`. Non-negotiable.
 - No `any` — ever. Use `unknown` and narrow with type guards.
 - All API response shapes must be typed with explicit interfaces.
-- All function parameters and return types must be explicitly annotated.
 
 ---
 
 ## Error Handling
 
-Every external API call uses the typed result union defined in `types/index.ts`:
+Every external API call uses the typed result union in `types/index.ts`:
 
 ```typescript
 type FetchResult<T> =
@@ -33,26 +32,21 @@ type FetchResult<T> =
   | { success: false; error: "rate_limited" | "not_found" | "timeout" | "network_error"; retryAfter?: string }
 ```
 
-- GitHub 403 + remaining=0 → `rate_limited` → return degraded score
-- GitHub 404 → `not_found` → `risk_level: "unknown"` (no GitHub ≠ abandoned)
-- Any fetch > 8s → abort → `timeout` → degraded score
-- npm 404 → `not_found` → zero score
+- GitHub 403 + remaining=0 → `rate_limited` → degraded score
+- GitHub 404 → `not_found` → `risk_level: "unknown"`
+- GitHub 202 → retry once after 1s (stats computing)
+- Any fetch > 8s → abort → `timeout`
 - **Never throw raw errors. Never return HTTP 500.**
 
 ---
 
-## Rate Limit Rules — Highest Priority
+## Rate Limit & Concurrency
 
-1. `GITHUB_TOKEN` required — app throws at startup if absent (`lib/github.ts`)
+1. `GITHUB_TOKEN` required — throws at startup if absent
 2. Read `x-ratelimit-remaining` on EVERY GitHub response
-3. Never let remaining drop below 100 — serve degraded results instead
-4. Never return HTTP 500 if rate limited — always return partial results with `data_confidence: "unavailable"`
-
----
-
-## Concurrency Rules
-
-Never fire unbounded `Promise.all()` over a package list. Always use `fetchBatched()` from `lib/fetcher.ts` (batches of 5, adaptive delay 200ms–3000ms based on rate limit state).
+3. Never let remaining < 100 — serve degraded results
+4. Batched processing via `fetchBatched()` (batch size 5, concurrent within batch)
+5. Adaptive delay: 200ms → 1000ms → 3000ms → stop based on remaining
 
 ---
 
@@ -61,31 +55,37 @@ Never fire unbounded `Promise.all()` over a package list. Always use `fetchBatch
 ```
 /
 ├── app/
-│   ├── layout.tsx                        # Root layout
-│   ├── page.tsx                          # Landing + file upload UI
-│   ├── results/
-│   │   └── ResultsDashboard.tsx          # Results dashboard component
+│   ├── layout.tsx, providers.tsx, NavBar.tsx
+│   ├── page.tsx                           # Landing + file upload
+│   ├── results/ResultsDashboard.tsx       # Results with score breakdown
+│   ├── badge/page.tsx                     # Badge generator
+│   ├── dashboard/page.tsx                 # Watchlist dashboard (auth)
 │   └── api/
-│       ├── analyze/route.ts              # POST /api/analyze
-│       └── cron/refresh-popular/route.ts # Nightly cache refresh
+│       ├── analyze/route.ts               # POST /api/analyze
+│       ├── badge/route.ts                 # GET /api/badge (SVG)
+│       ├── cache/route.ts                 # DELETE /api/cache (flush)
+│       ├── watchlist/route.ts             # CRUD watchlist (auth)
+│       ├── auth/[...nextauth]/route.ts    # Auth.js v5
+│       └── cron/refresh-popular/route.ts  # Nightly cache refresh
 ├── lib/
-│   ├── parser.ts       # Client-side only. Parses package.json / requirements.txt
-│   ├── fetcher.ts      # Batched fetching + adaptive throttle + cache read/write
-│   ├── scorer.ts       # Health Score algorithm — pure functions ONLY
-│   ├── cache.ts        # Upstash Redis wrapper with getOrFetch pattern
-│   ├── github.ts       # GitHub API client with typed responses
-│   ├── npm.ts          # npm / PyPI API clients
-│   └── __tests__/      # Vitest test files
-├── types/
-│   └── index.ts        # All shared TypeScript interfaces
-├── data/
-│   └── popular-packages.json   # Top 100 npm packages for nightly warming
+│   ├── auth.ts        # Auth.js v5 config (GitHub OAuth, JWT)
+│   ├── parser.ts      # Client-side: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile
+│   ├── fetcher.ts     # Batched fetch + cache (npm, PyPI, crates.io, Go proxy, RubyGems)
+│   ├── scorer.ts      # Health Score — pure functions, null weight redistribution
+│   ├── cache.ts       # Upstash Redis wrapper, versioned keys (v2:dep:...)
+│   ├── github.ts      # GitHub API client (202 retry on contributors)
+│   ├── npm.ts         # npm / PyPI / crates.io / Go proxy / RubyGems clients
+│   └── __tests__/     # Vitest test files
+├── bin/
+│   └── check.js       # CLI tool: node bin/check.js [file] --threshold 60
+├── types/index.ts     # All shared TypeScript interfaces
+├── action.yml         # GitHub Action definition
 └── CLAUDE.md
 ```
 
 ---
 
-## Separation of Concerns — Hard Rules
+## Separation of Concerns
 
 | File | Does | Must NOT do |
 |---|---|---|
@@ -101,31 +101,16 @@ Never fire unbounded `Promise.all()` over a package list. Always use `fetchBatch
 
 ## Caching
 
-Uses `getOrFetch<T>()` from `lib/cache.ts` with Upstash Redis:
-- Cache keys: `dep:{ecosystem}:{package_name}:{major_version}`
+- Versioned cache keys: `v2:dep:{ecosystem}:{name}:{major_version}`
 - Dynamic TTL: 72h (>1M dl/wk), 48h (100k–1M), 24h (10k–100k), 12h (<10k)
-- Never cache error states or degraded results
-- Always return `cached: boolean` for UI hit rate display
-
----
-
-## GitHub API — Approved Endpoints Only
-
-| Data | Endpoint |
-|---|---|
-| Repo metadata | `GET /repos/{owner}/{repo}` |
-| Last commit | `GET /repos/{owner}/{repo}/commits?per_page=1` |
-| Contributors 90d | `GET /repos/{owner}/{repo}/stats/contributors` |
-| Recent PRs | `GET /repos/{owner}/{repo}/pulls?state=closed&per_page=20` |
-| CVEs | `GET /repos/{owner}/{repo}/security-advisories` |
-
-Resolve npm → GitHub: fetch registry, parse `repository.url`, strip `git+`/`.git`. No repo field → `github_url: null` → npm-only signals.
+- Never cache degraded results (`data_confidence: "unavailable"`)
+- Skip + delete stale degraded entries on read
 
 ---
 
 ## Scoring Engine
 
-Formula defined in `SYSTEM_DESIGN.md` — do not change weights:
+Weights (do not change):
 
 | Signal | Weight | Null fallback |
 |---|---|---|
@@ -137,6 +122,8 @@ Formula defined in `SYSTEM_DESIGN.md` — do not change weights:
 | download_trend_score | 0.10 | 50 |
 | maintainer_score | 0.05 | 50 |
 
+**Null weight redistribution:** When a signal has no data, its weight is redistributed proportionally to signals with real data. This prevents rate-limited GitHub data from dragging scores down.
+
 `security_penalty` is a multiplier applied after the weighted sum. All outputs clamped to [0, 100].
 
 ---
@@ -147,10 +134,9 @@ Formula defined in `SYSTEM_DESIGN.md` — do not change weights:
 GITHUB_TOKEN=ghp_...                    # Required — throws at startup
 UPSTASH_REDIS_REST_URL=https://...      # Required
 UPSTASH_REDIS_REST_TOKEN=...            # Required
-AUTH_GITHUB_ID=...                      # Optional — GitHub OAuth (auth disabled if missing)
+AUTH_GITHUB_ID=...                      # Optional — GitHub OAuth
 AUTH_GITHUB_SECRET=...                  # Optional — GitHub OAuth
-AUTH_SECRET=...                         # Required if auth enabled (openssl rand -hex 32)
-USE_MOCK_DATA=false                     # Dev only — NEVER in production
+AUTH_SECRET=...                         # Required if auth enabled
 ```
 
 ---
@@ -161,21 +147,6 @@ USE_MOCK_DATA=false                     # Dev only — NEVER in production
 |---|---|
 | `scorer.ts` | 100% coverage — pure functions, no mocks |
 | `parser.ts` | All formats: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile |
-| `fetcher.ts` | Mock: success, GitHub 403, GitHub 404, timeout > 8s |
-| `cache.ts` | Test: HIT, MISS, write failure |
-
-No snapshot tests. Only explicit assertions on typed return values.
+| `cache.ts` | Test: HIT, MISS, versioned keys |
 
 Run: `npm run test` (131 tests passing)
-
----
-
-## Do Not Build Without Discussion
-
-- User accounts or authentication
-- Email capture or newsletters
-- Paid tiers or paywalls
-- LLM-generated suggestions
-- User-identifying analytics
-- A backend database (Redis cache only)
-- Unauthenticated GitHub API calls
