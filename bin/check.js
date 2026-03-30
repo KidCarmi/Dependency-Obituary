@@ -29,7 +29,7 @@ function getFlag(name, defaultValue) {
 const threshold = parseInt(getFlag("threshold", "60"), 10);
 const apiUrl =
   getFlag("api-url", process.env.DEPENDENCY_OBITUARY_URL) ||
-  "https://dependency-obituary.vercel.app";
+  "https://dependency-obituary.orelsec.com";
 
 // Find the file argument (first arg that doesn't start with --)
 const fileArg = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1]?.startsWith("--") === false);
@@ -266,7 +266,7 @@ async function main() {
 
   Options:
     --threshold <n>    Minimum passing score (default: 60)
-    --api-url <url>    API base URL (default: https://dependency-obituary.vercel.app)
+    --api-url <url>    API base URL (default: https://dependency-obituary.orelsec.com)
     -h, --help         Show this help
 
   Auto-detects: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     title: "Dependency Obituary",
     description:
       "Your dependencies are dying. You just don't know it yet. Drop your package.json and find out which ones.",
-    url: "https://dependency-obituary.vercel.app",
+    url: "https://dependency-obituary.orelsec.com",
     siteName: "Dependency Obituary",
     images: [
       {

@@ -64,7 +64,7 @@ When a signal has no data (e.g. GitHub rate-limited), its weight is redistribute
 
 ### Web app
 
-Visit **[dependency-obituary.vercel.app](https://dependency-obituary.vercel.app)** — drop your file, done.
+Visit **[dependency-obituary.orelsec.com](https://dependency-obituary.orelsec.com)** — drop your file, done.
 
 Click any package row to see a full score breakdown with per-signal bars and explanations.
 
@@ -93,17 +93,17 @@ Triggers on PRs that change dependency files. See `.github/workflows/dependency-
 Add health score badges to your README:
 
 ```markdown
-![Health Score](https://dependency-obituary.vercel.app/api/badge?ecosystem=npm&package=express)
+![Health Score](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=express)
 ```
 
-![express](https://dependency-obituary.vercel.app/api/badge?ecosystem=npm&package=express)
+![express](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=express)
 
-Generate badges at [dependency-obituary.vercel.app/badge](https://dependency-obituary.vercel.app/badge).
+Generate badges at [dependency-obituary.orelsec.com/badge](https://dependency-obituary.orelsec.com/badge).
 
 ### API
 
 ```bash
-curl -X POST https://dependency-obituary.vercel.app/api/analyze \
+curl -X POST https://dependency-obituary.orelsec.com/api/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "ecosystem": "npm",

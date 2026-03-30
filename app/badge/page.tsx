@@ -19,7 +19,7 @@ export default function BadgePage(): React.ReactElement {
   const currentEco = ECOSYSTEMS.find((e) => e.value === ecosystem)!;
 
   const badgeUrl = packageName
-    ? `https://dependency-obituary.vercel.app/api/badge?ecosystem=${ecosystem}&package=${encodeURIComponent(packageName)}`
+    ? `https://dependency-obituary.orelsec.com/api/badge?ecosystem=${ecosystem}&package=${encodeURIComponent(packageName)}`
     : "";
 
   const markdown = packageName

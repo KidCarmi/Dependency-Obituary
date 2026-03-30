@@ -5,7 +5,7 @@
  * Cached for 1 hour via Cache-Control headers.
  *
  * Usage in README:
- *   ![Health](https://dependency-obituary.vercel.app/api/badge?ecosystem=npm&package=react)
+ *   ![Health](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=react)
  */
 
 import { NextResponse } from "next/server";
