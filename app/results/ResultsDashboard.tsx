@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type {
   AnalyzeResponse,
   HealthResult,
   RiskLevel,
-  ScoreBreakdownResponse,
 } from "@/types";
 
 const RISK_COLORS: Record<RiskLevel, string> = {
@@ -46,15 +45,12 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
   const [sortKey, setSortKey] = useState<SortKey>("health_score");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [riskFilter, setRiskFilter] = useState<Set<RiskLevel>>(new Set());
 
   const riskCounts = useMemo(() => {
     const counts: Record<RiskLevel, number> = {
-      healthy: 0,
-      stable: 0,
-      at_risk: 0,
-      critical: 0,
-      abandoned: 0,
-      unknown: 0,
+      healthy: 0, stable: 0, at_risk: 0, critical: 0, abandoned: 0, unknown: 0,
     };
     for (const r of data.results) {
       counts[r.risk_level]++;
@@ -62,36 +58,30 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
     return counts;
   }, [data.results]);
 
+  const filtered = useMemo(() => {
+    return data.results.filter((r) => {
+      if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (riskFilter.size > 0 && !riskFilter.has(r.risk_level)) return false;
+      return true;
+    });
+  }, [data.results, searchQuery, riskFilter]);
+
   const sorted = useMemo(() => {
     const riskOrder: Record<RiskLevel, number> = {
-      abandoned: 0,
-      critical: 1,
-      at_risk: 2,
-      stable: 3,
-      healthy: 4,
-      unknown: 5,
+      abandoned: 0, critical: 1, at_risk: 2, stable: 3, healthy: 4, unknown: 5,
     };
-
-    return [...data.results].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let cmp = 0;
-      if (sortKey === "name") {
-        cmp = a.name.localeCompare(b.name);
-      } else if (sortKey === "health_score") {
-        cmp = (a.health_score ?? -1) - (b.health_score ?? -1);
-      } else {
-        cmp = riskOrder[a.risk_level] - riskOrder[b.risk_level];
-      }
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "health_score") cmp = (a.health_score ?? -1) - (b.health_score ?? -1);
+      else cmp = riskOrder[a.risk_level] - riskOrder[b.risk_level];
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [data.results, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   const handleSort = (key: SortKey): void => {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDir(key === "name" ? "asc" : "asc");
-    }
+    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
   const sortArrow = (key: SortKey): string => {
@@ -99,28 +89,89 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
     return sortDir === "asc" ? " \u2191" : " \u2193";
   };
 
+  const toggleRiskFilter = (level: RiskLevel): void => {
+    setRiskFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) next.delete(level);
+      else next.add(level);
+      return next;
+    });
+  };
+
+  // ─── Export ──────────────────────────────────────────────────────────────
+
+  const handleExportJSON = useCallback(() => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dependency-obituary-report.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
+  const handleExportCSV = useCallback(() => {
+    const headers = ["Package", "Version", "Score", "Risk Level", "Confidence", "GitHub URL", "Registry URL"];
+    const rows = data.results.map((r) => [
+      r.name,
+      r.version,
+      r.health_score !== null ? String(r.health_score) : "",
+      r.risk_level,
+      r.data_confidence,
+      r.github_url ?? "",
+      r.npm_url ?? "",
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dependency-obituary-report.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
   return (
     <div>
-      {/* Header */}
-      <h1 className="text-2xl font-bold mb-1">Health Report</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Analyzed {data.results.length} packages &middot;{" "}
-        {Math.round(data.meta.cache_hit_rate * 100)}% cache hits
-        {data.meta.degraded_count > 0 && (
-          <span className="text-yellow-500">
-            {" "}&middot; {data.meta.degraded_count} unavailable
-          </span>
-        )}
-      </p>
+      {/* Header + Export */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Health Report</h1>
+          <p className="text-sm text-gray-500">
+            Analyzed {data.results.length} packages &middot;{" "}
+            {Math.round(data.meta.cache_hit_rate * 100)}% cache hits
+            {data.meta.degraded_count > 0 && (
+              <span className="text-yellow-500">
+                {" "}&middot; {data.meta.degraded_count} unavailable
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportJSON}
+            className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+          >
+            Export JSON
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+          >
+            Export CSV
+          </button>
+        </div>
+      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
-        {(
-          ["healthy", "stable", "at_risk", "critical", "abandoned"] as const
-        ).map((level) => (
-          <div
+      {/* Summary Cards — clickable as filters */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
+        {(["healthy", "stable", "at_risk", "critical", "abandoned"] as const).map((level) => (
+          <button
             key={level}
-            className={`rounded-lg p-4 ${RISK_BG[level]}`}
+            onClick={() => toggleRiskFilter(level)}
+            className={`rounded-lg p-4 text-left transition-all ${RISK_BG[level]} ${
+              riskFilter.size > 0 && !riskFilter.has(level) ? "opacity-30" : ""
+            }`}
           >
             <div className={`text-2xl font-bold ${RISK_COLORS[level]}`}>
               {riskCounts[level]}
@@ -128,8 +179,30 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
             <div className="text-xs text-gray-400 mt-1">
               {RISK_LABELS[level]}
             </div>
-          </div>
+          </button>
         ))}
+      </div>
+
+      {/* Search + Filter Bar */}
+      <div className="flex items-center gap-3 mb-4">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search packages..."
+          className="flex-1 px-3 py-2 text-sm bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+        />
+        {(searchQuery || riskFilter.size > 0) && (
+          <button
+            onClick={() => { setSearchQuery(""); setRiskFilter(new Set()); }}
+            className="text-xs text-gray-500 hover:text-white transition-colors"
+          >
+            Clear filters
+          </button>
+        )}
+        <span className="text-xs text-gray-600">
+          {filtered.length} of {data.results.length}
+        </span>
       </div>
 
       {/* Results Table */}
@@ -143,9 +216,7 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
               >
                 Package{sortArrow("name")}
               </th>
-              <th className="text-left p-3 text-gray-400 font-medium">
-                Version
-              </th>
+              <th className="text-left p-3 text-gray-400 font-medium">Version</th>
               <th
                 className="text-left p-3 cursor-pointer hover:text-white text-gray-400 font-medium"
                 onClick={() => handleSort("health_score")}
@@ -158,9 +229,7 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
               >
                 Status{sortArrow("risk_level")}
               </th>
-              <th className="text-left p-3 text-gray-400 font-medium">
-                Links
-              </th>
+              <th className="text-left p-3 text-gray-400 font-medium">Links</th>
             </tr>
           </thead>
           <tbody>
@@ -170,12 +239,17 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
                 result={result}
                 expanded={expandedRow === result.name}
                 onToggle={() =>
-                  setExpandedRow(
-                    expandedRow === result.name ? null : result.name
-                  )
+                  setExpandedRow(expandedRow === result.name ? null : result.name)
                 }
               />
             ))}
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-gray-600">
+                  No packages match your filter.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -194,6 +268,17 @@ function ResultRow({
   expanded: boolean;
   onToggle: () => void;
 }): React.ReactElement {
+  const registryLabel = result.npm_url
+    ? result.npm_url.includes("pypi") ? "PyPI"
+    : result.npm_url.includes("crates.io") ? "crates.io"
+    : result.npm_url.includes("rubygems") ? "RubyGems"
+    : result.npm_url.includes("pkg.go.dev") ? "Go"
+    : result.npm_url.includes("packagist") ? "Packagist"
+    : result.npm_url.includes("mvnrepository") ? "Maven"
+    : result.npm_url.includes("pub.dev") ? "pub.dev"
+    : "npm"
+    : null;
+
   return (
     <>
       <tr
@@ -201,9 +286,7 @@ function ResultRow({
         onClick={onToggle}
       >
         <td className="p-3 font-medium">{result.name}</td>
-        <td className="p-3 text-gray-500 font-mono text-xs">
-          {result.version}
-        </td>
+        <td className="p-3 text-gray-500 font-mono text-xs">{result.version}</td>
         <td className="p-3">
           {result.health_score !== null ? (
             <ScoreBadge score={result.health_score} />
@@ -220,25 +303,15 @@ function ResultRow({
         </td>
         <td className="p-3 space-x-2">
           {result.github_url && (
-            <a
-              href={result.github_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-gray-500 hover:text-white"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <a href={result.github_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-gray-500 hover:text-white" onClick={(e) => e.stopPropagation()}>
               GitHub
             </a>
           )}
           {result.npm_url && (
-            <a
-              href={result.npm_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-gray-500 hover:text-white"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {result.npm_url.includes("pypi") ? "PyPI" : "npm"}
+            <a href={result.npm_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-gray-500 hover:text-white" onClick={(e) => e.stopPropagation()}>
+              {registryLabel}
             </a>
           )}
         </td>
@@ -299,12 +372,8 @@ function ScoreBar({
         <span className="text-xs font-mono font-medium">{score}</span>
       </div>
       <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full ${barColor} transition-all`}
-          style={{ width: `${score}%` }}
-        />
+        <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${score}%` }} />
       </div>
-      {/* Tooltip */}
       <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 w-56 leading-relaxed shadow-xl">
         {tooltip}
       </div>
@@ -330,18 +399,10 @@ function ExpandedDetails({
         <ConfidenceDot confidence={confidence} />
         <span className="text-xs text-gray-400">
           Data confidence:{" "}
-          <span
-            className={
-              confidence === "high"
-                ? "text-green-400"
-                : confidence === "low"
-                  ? "text-yellow-400"
-                  : "text-gray-500"
-            }
-          >
+          <span className={confidence === "high" ? "text-green-400" : confidence === "low" ? "text-yellow-400" : "text-gray-500"}>
             {confidence}
           </span>
-          {confidence === "low" && " — no GitHub repo found, npm-only signals"}
+          {confidence === "low" && " — no GitHub repo found, registry-only signals"}
           {confidence === "unavailable" && " — data could not be fetched"}
         </span>
       </div>
@@ -349,61 +410,29 @@ function ExpandedDetails({
       {/* Score Breakdown */}
       {breakdown && (
         <div>
-          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
-            Score Breakdown
-          </h4>
+          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Score Breakdown</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-            <ScoreBar
-              score={breakdown.commit_score}
-              weight="25%"
-              label="Commit Activity"
-              tooltip="Is anyone actively committing? Based on days since last commit. Recent commits (< 30d) score 100, > 1 year scores 0."
-            />
-            <ScoreBar
-              score={breakdown.release_score}
-              weight="20%"
-              label="Release Cadence"
-              tooltip="Are fixes reaching published versions? Based on days since last release. Recent release (< 60d) scores 100, > 2 years scores 0."
-            />
-            <ScoreBar
-              score={breakdown.issue_health_score}
-              weight="15%"
-              label="Issue Health"
-              tooltip="Is the maintainer responsive? Measures open vs closed issue ratio. Lower open ratio = healthier project."
-            />
-            <ScoreBar
-              score={breakdown.contributor_score}
-              weight="15%"
-              label="Contributors (90d)"
-              tooltip="Bus factor — is this a single-maintainer project? 0 contributors = 0, 1 = 30 (risk), 5-10 = 85, 10+ = 100."
-            />
-            <ScoreBar
-              score={breakdown.pr_velocity_score}
-              weight="10%"
-              label="PR Velocity"
-              tooltip="How quickly are PRs merged? < 3 days avg = 100, > 90 days = 0. No merged PRs = insufficient data."
-            />
-            <ScoreBar
-              score={breakdown.download_trend_score}
-              weight="10%"
-              label="Download Trend"
-              tooltip="Is the ecosystem migrating away? Compares current week vs 12 weeks ago. Growing > 10% = 100, declining > 30% = 15."
-            />
-            <ScoreBar
-              score={breakdown.maintainer_score}
-              weight="5%"
-              label="Maintainers"
-              tooltip="Multiple maintainers reduce single-point-of-failure risk. Multiple = 100, single = 30."
-            />
+            <ScoreBar score={breakdown.commit_score} weight="25%" label="Commit Activity"
+              tooltip="Is anyone actively committing? Recent commits (< 30d) score 100, > 1 year scores 0." />
+            <ScoreBar score={breakdown.release_score} weight="20%" label="Release Cadence"
+              tooltip="Are fixes reaching published versions? Recent release (< 60d) scores 100, > 2 years scores 0." />
+            <ScoreBar score={breakdown.issue_health_score} weight="15%" label="Issue Health"
+              tooltip="Is the maintainer responsive? Measures open vs closed issue ratio. Lower open ratio = healthier." />
+            <ScoreBar score={breakdown.contributor_score} weight="15%" label="Contributors (90d)"
+              tooltip="Bus factor — 0 contributors = 0, 1 = 30 (risk), 5-10 = 85, 10+ = 100." />
+            <ScoreBar score={breakdown.pr_velocity_score} weight="10%" label="PR Velocity"
+              tooltip="How quickly are PRs merged? < 3 days = 100, > 90 days = 0." />
+            <ScoreBar score={breakdown.download_trend_score} weight="10%" label="Download Trend"
+              tooltip="Is the ecosystem migrating away? Growing > 10% = 100, declining > 30% = 15." />
+            <ScoreBar score={breakdown.maintainer_score} weight="5%" label="Maintainers"
+              tooltip="Multiple maintainers reduce single-point-of-failure risk. Multiple = 100, single = 30." />
           </div>
           {breakdown.security_penalty < 1 && (
             <div className="mt-3 px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
               <span className="text-xs text-red-400 font-medium">
                 Security penalty: {Math.round(breakdown.security_penalty * 100)}% multiplier
               </span>
-              <span className="text-xs text-gray-500 ml-2">
-                (unresolved CVEs detected)
-              </span>
+              <span className="text-xs text-gray-500 ml-2">(unpatched CVEs detected)</span>
             </div>
           )}
         </div>
@@ -412,72 +441,16 @@ function ExpandedDetails({
       {/* Raw Signals */}
       {signals && (
         <div>
-          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
-            Raw Signals
-          </h4>
+          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Raw Signals</h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <SignalItem
-              label="Last commit"
-              value={
-                signals.days_since_last_commit !== null
-                  ? `${signals.days_since_last_commit}d ago`
-                  : null
-              }
-            />
-            <SignalItem
-              label="Last release"
-              value={
-                signals.days_since_last_release !== null
-                  ? `${signals.days_since_last_release}d ago`
-                  : null
-              }
-            />
-            <SignalItem
-              label="Contributors (90d)"
-              value={
-                signals.contributor_count_90d !== null
-                  ? String(signals.contributor_count_90d)
-                  : null
-              }
-            />
-            <SignalItem
-              label="PR merge velocity"
-              value={
-                signals.pr_merge_velocity_days !== null
-                  ? `${signals.pr_merge_velocity_days}d avg`
-                  : null
-              }
-            />
-            <SignalItem
-              label="Weekly downloads"
-              value={
-                signals.weekly_downloads !== null
-                  ? signals.weekly_downloads.toLocaleString()
-                  : null
-              }
-            />
-            <SignalItem
-              label="Downloads 12w ago"
-              value={
-                signals.weekly_downloads_12w_ago !== null
-                  ? signals.weekly_downloads_12w_ago.toLocaleString()
-                  : null
-              }
-            />
-            <SignalItem
-              label="Multiple maintainers"
-              value={
-                signals.has_multiple_maintainers !== null
-                  ? signals.has_multiple_maintainers
-                    ? "Yes"
-                    : "No"
-                  : null
-              }
-            />
-            <SignalItem
-              label="Unresolved CVEs"
-              value={String(signals.unresolved_cves)}
-            />
+            <SignalItem label="Last commit" value={signals.days_since_last_commit !== null ? `${signals.days_since_last_commit}d ago` : null} />
+            <SignalItem label="Last release" value={signals.days_since_last_release !== null ? `${signals.days_since_last_release}d ago` : null} />
+            <SignalItem label="Contributors (90d)" value={signals.contributor_count_90d !== null ? String(signals.contributor_count_90d) : null} />
+            <SignalItem label="PR merge velocity" value={signals.pr_merge_velocity_days !== null ? `${signals.pr_merge_velocity_days}d avg` : null} />
+            <SignalItem label="Weekly downloads" value={signals.weekly_downloads !== null ? signals.weekly_downloads.toLocaleString() : null} />
+            <SignalItem label="Downloads 12w ago" value={signals.weekly_downloads_12w_ago !== null ? signals.weekly_downloads_12w_ago.toLocaleString() : null} />
+            <SignalItem label="Multiple maintainers" value={signals.has_multiple_maintainers !== null ? (signals.has_multiple_maintainers ? "Yes" : "No") : null} />
+            <SignalItem label="Unpatched CVEs" value={String(signals.unresolved_cves)} />
           </div>
         </div>
       )}
@@ -487,42 +460,20 @@ function ExpandedDetails({
 
 // ─── Confidence Dot ─────────────────────────────────────────────────────────
 
-function ConfidenceDot({
-  confidence,
-}: {
-  confidence: HealthResult["data_confidence"];
-}): React.ReactElement {
-  const color =
-    confidence === "high"
-      ? "bg-green-400"
-      : confidence === "low"
-        ? "bg-yellow-400"
-        : "bg-gray-500";
-
+function ConfidenceDot({ confidence }: { confidence: HealthResult["data_confidence"] }): React.ReactElement {
+  const color = confidence === "high" ? "bg-green-400" : confidence === "low" ? "bg-yellow-400" : "bg-gray-500";
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
 }
 
-// ─── Signal Item with confidence indicator ──────────────────────────────────
+// ─── Signal Item ────────────────────────────────────────────────────────────
 
-function SignalItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null;
-}): React.ReactElement {
+function SignalItem({ label, value }: { label: string; value: string | null }): React.ReactElement {
   return (
     <div className="flex items-start gap-1.5">
-      <span
-        className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
-          value !== null ? "bg-green-400" : "bg-gray-600"
-        }`}
-      />
+      <span className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${value !== null ? "bg-green-400" : "bg-gray-600"}`} />
       <div>
         <div className="text-xs text-gray-500">{label}</div>
-        <div className={`text-sm font-medium ${value === null ? "text-gray-600" : ""}`}>
-          {value ?? "No data"}
-        </div>
+        <div className={`text-sm font-medium ${value === null ? "text-gray-600" : ""}`}>{value ?? "No data"}</div>
       </div>
     </div>
   );
