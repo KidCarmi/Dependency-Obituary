@@ -122,6 +122,18 @@ export default function IntegrationsPage(): React.ReactElement {
         ))}
       </div>
 
+      {/* Settings link */}
+      {session && (
+        <div className="text-center mb-8">
+          <Link
+            href="/integrations/settings"
+            className="text-xs text-gray-500 hover:text-blue-400 transition-colors"
+          >
+            Configure bot thresholds and behavior &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* CTA */}
       <div className="text-center pb-12">
         <a

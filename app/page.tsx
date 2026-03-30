@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { parseFile } from "@/lib/parser";
+import { markOnboardingStep } from "./OnboardingStepper";
 import type { AnalyzeResponse, Package, Ecosystem } from "@/types";
 import ResultsDashboard from "./results/ResultsDashboard";
 
@@ -128,6 +129,7 @@ export default function HomePage(): React.ReactElement {
       };
 
       setState({ step: "results", data: combined, ecosystem, packages, filename });
+      markOnboardingStep("analyzed");
     } catch {
       setState({ step: "error", message: "Analysis failed. Please try again." });
     }
@@ -147,7 +149,10 @@ export default function HomePage(): React.ReactElement {
       }),
     });
 
-    if (res.ok) setSaved(true);
+    if (res.ok) {
+      setSaved(true);
+      markOnboardingStep("saved");
+    }
   }, [state]);
 
   const handleShare = useCallback(async () => {

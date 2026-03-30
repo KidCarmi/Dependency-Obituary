@@ -413,19 +413,45 @@ function ExpandedDetails({
           <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Score Breakdown</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
             <ScoreBar score={breakdown.commit_score} weight="25%" label="Commit Activity"
-              tooltip="Is anyone actively committing? Recent commits (< 30d) score 100, > 1 year scores 0." />
+              tooltip={breakdown.commit_score >= 80
+                ? "Active development — commits within the last 90 days."
+                : breakdown.commit_score >= 40
+                  ? "Slowing down — no commits in 3-6 months. Pin your version and monitor."
+                  : "No commits in over a year. Consider migrating to an active alternative."} />
             <ScoreBar score={breakdown.release_score} weight="20%" label="Release Cadence"
-              tooltip="Are fixes reaching published versions? Recent release (< 60d) scores 100, > 2 years scores 0." />
+              tooltip={breakdown.release_score >= 80
+                ? "Healthy release cycle — fixes are reaching published versions."
+                : breakdown.release_score >= 40
+                  ? "Release slowing — last publish was 6-12 months ago. Check if critical fixes are pending."
+                  : "No release in over a year. Bug fixes and security patches aren't reaching users."} />
             <ScoreBar score={breakdown.issue_health_score} weight="15%" label="Issue Health"
-              tooltip="Is the maintainer responsive? Measures open vs closed issue ratio. Lower open ratio = healthier." />
+              tooltip={breakdown.issue_health_score >= 80
+                ? "Maintainer is responsive — most issues get addressed."
+                : breakdown.issue_health_score >= 40
+                  ? "Growing backlog of open issues. Check if your critical issues are being tracked."
+                  : "High ratio of unresolved issues. Maintainer may be unresponsive."} />
             <ScoreBar score={breakdown.contributor_score} weight="15%" label="Contributors (90d)"
-              tooltip="Bus factor — 0 contributors = 0, 1 = 30 (risk), 5-10 = 85, 10+ = 100." />
+              tooltip={breakdown.contributor_score >= 80
+                ? "Healthy bus factor — multiple active contributors."
+                : breakdown.contributor_score >= 40
+                  ? "Few recent contributors. Single point of failure risk."
+                  : "Zero or one contributor in 90 days. High risk of sudden abandonment."} />
             <ScoreBar score={breakdown.pr_velocity_score} weight="10%" label="PR Velocity"
-              tooltip="How quickly are PRs merged? < 3 days = 100, > 90 days = 0." />
+              tooltip={breakdown.pr_velocity_score >= 80
+                ? "PRs merge quickly — contributions are welcome and reviewed."
+                : breakdown.pr_velocity_score >= 40
+                  ? "PRs take weeks to merge. Community contributions may be ignored."
+                  : "PRs take months or never merge. External contributions are effectively blocked."} />
             <ScoreBar score={breakdown.download_trend_score} weight="10%" label="Download Trend"
-              tooltip="Is the ecosystem migrating away? Growing > 10% = 100, declining > 30% = 15." />
+              tooltip={breakdown.download_trend_score >= 80
+                ? "Growing or stable downloads — the ecosystem trusts this package."
+                : breakdown.download_trend_score >= 40
+                  ? "Downloads declining 10-30%. The ecosystem may be shifting to alternatives."
+                  : "Downloads dropping fast. Developers are actively migrating away."} />
             <ScoreBar score={breakdown.maintainer_score} weight="5%" label="Maintainers"
-              tooltip="Multiple maintainers reduce single-point-of-failure risk. Multiple = 100, single = 30." />
+              tooltip={breakdown.maintainer_score >= 80
+                ? "Multiple maintainers — reduced single-point-of-failure risk."
+                : "Single maintainer. If they leave, the package dies. Plan accordingly."} />
           </div>
           {breakdown.security_penalty < 1 && (
             <div className="mt-3 px-3 py-2 bg-red-400/10 border border-red-400/20 rounded-lg">
