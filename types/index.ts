@@ -192,6 +192,14 @@ export interface GitHubSecurityAdvisory {
   ghsa_id: string;
   severity: string;
   state: string;
+  vulnerabilities?: Array<{
+    package?: {
+      ecosystem: string;
+      name: string;
+    };
+    vulnerable_version_range?: string;
+    patched_versions?: string | null;
+  }>;
 }
 
 // ─── npm API Response Types ──────────────────────────────────────────────────

@@ -178,12 +178,22 @@ function buildSignals(
     }
   }
 
-  // Unresolved CVEs
+  // Unresolved CVEs — only count advisories with NO patch available
+  // Advisories with patched_versions mean a fix exists; users can upgrade.
+  // Only truly unpatched vulnerabilities should tank the score.
   let unresolvedCves = 0;
   if (github.advisories) {
-    unresolvedCves = github.advisories.filter(
-      (a) => a.state !== "closed" && a.state !== "withdrawn"
-    ).length;
+    unresolvedCves = github.advisories.filter((a) => {
+      if (a.state === "closed" || a.state === "withdrawn") return false;
+      // If all vulnerabilities in this advisory have patches, it's resolved
+      if (a.vulnerabilities && a.vulnerabilities.length > 0) {
+        const allPatched = a.vulnerabilities.every(
+          (v) => v.patched_versions !== null && v.patched_versions !== undefined
+        );
+        if (allPatched) return false;
+      }
+      return true;
+    }).length;
   }
 
   return {
