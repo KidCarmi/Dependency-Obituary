@@ -21,7 +21,7 @@ A maintainer went dark 14 months ago. Issues are stacking up. The last PR sat op
 
 Drop your dependency file. Get back an honest health report for every dependency - scored on real signals, not opinions.
 
-**Supports:** `package.json` `requirements.txt` `Cargo.toml` `go.mod` `Gemfile`
+**Supports:** `package.json` `requirements.txt` `Cargo.toml` `go.mod` `Gemfile` `composer.json` `build.gradle` `pubspec.yaml`
 
 **No account required. No install. No API key. Free forever.**
 
@@ -114,7 +114,7 @@ curl -X POST https://dependency-obituary.orelsec.com/api/analyze \
   }'
 ```
 
-Supported ecosystems: `npm`, `pypi`, `cargo`, `go`, `rubygems`
+Supported ecosystems: `npm`, `pypi`, `cargo`, `go`, `rubygems`, `packagist`, `maven`, `pub`
 
 ---
 
@@ -155,7 +155,7 @@ npm run dev
 | Auth | Auth.js v5 (GitHub OAuth, JWT) | Free |
 | Hosting | Vercel | Free |
 | Cache | Upstash Redis | Free (10k cmds/day) |
-| Package data | npm / PyPI / crates.io / Go proxy / RubyGems | Free |
+| Package data | npm / PyPI / crates.io / Go proxy / RubyGems / Packagist / Maven / pub.dev | Free |
 | VCS data | GitHub REST API v3 | Free (5k req/hr) |
 | **Total** | | **$0/month** |
 
@@ -204,7 +204,7 @@ npm run build        # Production build
 No. `npm audit` catches known CVEs. We catch abandonment - the slow death that security scanners miss. Use both.
 
 **What ecosystems are supported?**
-npm (package.json), PyPI (requirements.txt), Cargo (Cargo.toml), Go (go.mod), RubyGems (Gemfile).
+npm (package.json), PyPI (requirements.txt), Cargo (Cargo.toml), Go (go.mod), RubyGems (Gemfile), PHP/Composer (composer.json), Java/Kotlin (build.gradle), Dart/Flutter (pubspec.yaml).
 
 **How accurate is the score?**
 It's objective, not infallible. We always show raw signals alongside the score - you apply the judgment. When GitHub data is unavailable, scores are based on registry data only.
