@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { parseFile } from "@/lib/parser";
-import type { AnalyzeResponse, Package, Ecosystem, HealthResult } from "@/types";
+import type { AnalyzeResponse, Package, Ecosystem } from "@/types";
 import ResultsDashboard from "./results/ResultsDashboard";
 
 type AppState =
   | { step: "upload" }
-  | { step: "parsed"; ecosystem: Ecosystem; packages: Package[] }
-  | { step: "loading" }
-  | { step: "results"; data: AnalyzeResponse }
+  | { step: "parsed"; ecosystem: Ecosystem; packages: Package[]; filename: string }
+  | { step: "loading"; ecosystem: Ecosystem; packages: Package[]; filename: string }
+  | { step: "results"; data: AnalyzeResponse; ecosystem: Ecosystem; packages: Package[]; filename: string }
   | { step: "error"; message: string };
 
 export default function HomePage(): React.ReactElement {
+  const { data: session } = useSession();
   const [state, setState] = useState<AppState>({ step: "upload" });
   const [dragOver, setDragOver] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -27,7 +30,8 @@ export default function HomePage(): React.ReactElement {
         setState({ step: "error", message: "No dependencies found in file." });
         return;
       }
-      setState({ step: "parsed", ecosystem, packages });
+      setState({ step: "parsed", ecosystem, packages, filename: file.name });
+      setSaved(false);
     };
     reader.readAsText(file);
   }, []);
@@ -53,23 +57,38 @@ export default function HomePage(): React.ReactElement {
   const handleAnalyze = useCallback(async () => {
     if (state.step !== "parsed") return;
 
-    setState({ step: "loading" });
+    const { ecosystem, packages, filename } = state;
+    setState({ step: "loading", ecosystem, packages, filename });
 
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ecosystem: state.ecosystem,
-          packages: state.packages,
-        }),
+        body: JSON.stringify({ ecosystem, packages }),
       });
 
       const data: AnalyzeResponse = await res.json();
-      setState({ step: "results", data });
+      setState({ step: "results", data, ecosystem, packages, filename });
     } catch {
       setState({ step: "error", message: "Analysis failed. Please try again." });
     }
+  }, [state]);
+
+  const handleSaveToWatchlist = useCallback(async () => {
+    if (state.step !== "results") return;
+
+    const res = await fetch("/api/watchlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: state.filename.replace(/\.[^.]+$/, ""),
+        ecosystem: state.ecosystem,
+        filename: state.filename,
+        packages: state.packages,
+      }),
+    });
+
+    if (res.ok) setSaved(true);
   }, [state]);
 
   const handleReset = useCallback(() => {
@@ -81,12 +100,27 @@ export default function HomePage(): React.ReactElement {
   if (state.step === "results") {
     return (
       <main className="min-h-screen p-8 max-w-6xl mx-auto">
-        <button
-          onClick={handleReset}
-          className="mb-6 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          &larr; Analyze another file
-        </button>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={handleReset}
+            className="text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            &larr; Analyze another file
+          </button>
+          {session && (
+            <button
+              onClick={handleSaveToWatchlist}
+              disabled={saved}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                saved
+                  ? "bg-green-600/20 text-green-400 cursor-default"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              }`}
+            >
+              {saved ? "Saved to dashboard" : "Save to watchlist"}
+            </button>
+          )}
+        </div>
         <ResultsDashboard data={state.data} />
       </main>
     );
@@ -144,6 +178,13 @@ export default function HomePage(): React.ReactElement {
         <p className="text-xs text-gray-600 mt-3">
           Your file never leaves your browser. We parse it client-side.
         </p>
+
+        <a
+          href="/badge"
+          className="inline-block mt-4 text-xs text-gray-500 hover:text-blue-400 transition-colors"
+        >
+          Want badges for your README? &rarr;
+        </a>
 
         {/* Parsed State */}
         {state.step === "parsed" && (

@@ -1,3 +1,16 @@
+// ─── Auth / Session ─────────────────────────────────────────────────────────
+
+export interface WatchlistEntry {
+  id: string;
+  name: string;
+  ecosystem: Ecosystem;
+  filename: string;
+  packages: Package[];
+  created_at: string;
+  last_checked?: string;
+  last_results?: HealthResult[];
+}
+
 // ─── Ecosystem ───────────────────────────────────────────────────────────────
 
 export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems";

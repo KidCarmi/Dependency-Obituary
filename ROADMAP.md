@@ -26,11 +26,25 @@
 - [x] Auto-detects dependency files (package.json, requirements.txt, Cargo.toml, go.mod, Gemfile)
 - [x] Example workflow: `.github/workflows/dependency-health.yml`
 
-## v1.5 — Developer Ergonomics
-- VS Code extension — inline health scores in `package.json`
-- Badge generator — `![Health Score](https://dependency-obituary.vercel.app/badge/npm/react)` for READMEs
-- Optional API key system — higher rate limits for CI usage
+## v1.5 — Developer Ergonomics (done)
+- [x] Badge API: `GET /api/badge?ecosystem=npm&package=react` returns SVG badge
+- [x] Badge generator page at `/badge` — pick ecosystem, enter package, copy markdown
+- [x] Link from landing page to badge generator
+- [ ] VS Code extension — deferred (needs separate repo + marketplace publishing)
+- [ ] API key system — deferred (requires auth, needs discussion per CLAUDE.md)
 
-## v2.0 — Monitoring *(requires user discussion before building)*
-- Opt-in project monitoring — saved package lists, weekly digest email
-- GitHub App — automatic PR comments with health scores on dependency updates
+## v2.0 — Monitoring (done)
+- [x] GitHub OAuth via NextAuth.js — sign in with GitHub, JWT sessions
+- [x] NavBar with sign-in button / avatar dropdown (top-right)
+- [x] Watchlist API — save/load/delete monitored package lists (Redis)
+- [x] Dashboard page — view saved projects, run on-demand checks
+- [x] "Save to watchlist" button on results page (signed-in users only)
+- [x] Anonymous mode preserved — file upload works without sign-in
+- [ ] Weekly digest email — deferred (needs email service integration)
+- [ ] GitHub App for PR comments — deferred (needs separate App registration)
+
+## v2.1 — Future
+- More IDPs — Azure AD, GitLab, Bitbucket
+- More CI — Azure Pipelines task, GitLab CI template
+- Per-user GitHub tokens for API calls (use signed-in user's token)
+- Weekly digest via email service (Resend, SendGrid, etc.)
