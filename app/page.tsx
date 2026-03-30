@@ -440,7 +440,12 @@ export default function HomePage(): React.ReactElement {
         <p className="text-xs text-gray-700">
           Built in public. $0 to run. No VC. No bullshit.
         </p>
-        <p className="text-xs text-gray-800 mt-1">v0.3.0</p>
+        <div className="flex justify-center gap-4 mt-2">
+          <a href="/privacy" className="text-xs text-gray-700 hover:text-gray-500">Privacy</a>
+          <a href="/terms" className="text-xs text-gray-700 hover:text-gray-500">Terms</a>
+          <a href="https://github.com/KidCarmi/Dependency-Obituary" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-700 hover:text-gray-500">GitHub</a>
+        </div>
+        <p className="text-xs text-gray-800 mt-1">v0.4.0</p>
       </footer>
     </main>
   );

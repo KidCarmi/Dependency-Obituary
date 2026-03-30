@@ -2,6 +2,7 @@
   "name": "dependency-obituary",
   "version": "0.3.1",
   "private": true,
+  "license": "MIT",
   "bin": {
     "dependency-obituary": "./bin/check.js"
   },
