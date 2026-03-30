@@ -2,6 +2,8 @@
  * POST /api/analyze
  *
  * Orchestrates fetcher + scorer. Never returns 500.
+ * When a user is signed in, uses their GitHub OAuth token
+ * for API calls (5k req/hr per user vs shared token).
  */
 
 import { NextResponse } from "next/server";
@@ -12,6 +14,7 @@ import type {
   Package,
 } from "@/types";
 import { fetchBatched } from "@/lib/fetcher";
+import { auth } from "@/lib/auth";
 
 const MAX_PACKAGES = 500;
 
@@ -46,7 +49,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     if (!isValidEcosystem(ecosystem)) {
       return NextResponse.json(
-        { error: 'ecosystem must be "npm" or "pypi"' },
+        { error: "Invalid ecosystem" },
         { status: 400 }
       );
     }
@@ -65,8 +68,25 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
+    // Use the signed-in user's GitHub token if available
+    let userGithubToken: string | undefined;
+    try {
+      const session = await auth();
+      if (session) {
+        userGithubToken = (session as Record<string, unknown>).accessToken as string | undefined;
+      }
+    } catch {
+      // Auth not configured or failed — use shared token
+    }
+
     const trimmedPackages = packages.slice(0, MAX_PACKAGES);
-    const results = await fetchBatched(trimmedPackages, ecosystem);
+    const results = await fetchBatched(
+      trimmedPackages,
+      ecosystem,
+      5,
+      200,
+      userGithubToken
+    );
 
     const cacheHits = results.filter(
       (r) => r.data_confidence !== "unavailable"
