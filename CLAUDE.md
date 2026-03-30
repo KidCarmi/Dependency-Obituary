@@ -124,6 +124,8 @@ Weights (do not change):
 
 **Null weight redistribution:** When a signal has no data, its weight is redistributed proportionally to signals with real data. This prevents rate-limited GitHub data from dragging scores down.
 
+**Mature package detection:** `isMaturePackage()` detects "complete" packages (>10k downloads, stable trend, <15 issues, 0 CVEs). When detected, commit and release scores get a floor of 75 - inactivity in a widely-used, issue-free package is intentional, not abandonment.
+
 `security_penalty` is a multiplier applied after the weighted sum. All outputs clamped to [0, 100].
 
 ---
