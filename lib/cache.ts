@@ -27,8 +27,8 @@ export function buildCacheKey(
   version: string
 ): string {
   const majorVersion = version.split(".")[0] || "0";
-  // v5: scoring explanations + onboarding — invalidates v4 cache
-  return `v5:dep:${ecosystem}:${name}:${majorVersion}`;
+  // v6: mature package detection — invalidates v4 cache
+  return `v6:dep:${ecosystem}:${name}:${majorVersion}`;
 }
 
 // ─── Dynamic TTL by Popularity ──────────────────────────────────────────────

@@ -135,6 +135,48 @@ export function calculateSecurityPenalty(unresolvedCves: number): number {
   return 0.40;
 }
 
+// ─── Mature Package Detection ────────────────────────────────────────────────
+
+/**
+ * Detects "complete" packages - still widely used but intentionally inactive.
+ * Examples: left-pad, inherits, escape-html, is-odd
+ *
+ * A package is likely mature/complete when:
+ * - High downloads (still widely used by the ecosystem)
+ * - Stable or growing download trend (not being abandoned by users)
+ * - Few or no open issues (no unresolved problems)
+ * - No unresolved CVEs (no security concerns)
+ *
+ * Returns true if the package appears complete rather than abandoned.
+ */
+export function isMaturePackage(signals: PackageSignals): boolean {
+  // Must have download data to assess
+  if (signals.weeklyDownloads === null) return false;
+
+  // Must have significant adoption (>10k weekly downloads)
+  if (signals.weeklyDownloads < 10000) return false;
+
+  // Must not have unresolved CVEs
+  if (signals.unresolvedCves > 0) return false;
+
+  // Download trend must be stable or growing (not declining)
+  if (
+    signals.weeklyDownloads12wAgo !== null &&
+    signals.weeklyDownloads12wAgo > 0
+  ) {
+    const changeRatio =
+      (signals.weeklyDownloads - signals.weeklyDownloads12wAgo) /
+      signals.weeklyDownloads12wAgo;
+    // If downloads are declining more than 20%, it's probably being abandoned
+    if (changeRatio < -0.2) return false;
+  }
+
+  // Must have very few open issues (or no issue data)
+  if (signals.openIssues !== null && signals.openIssues > 15) return false;
+
+  return true;
+}
+
 // ─── Risk Classification ──────────────────────────────────────────────────────
 
 export function classifyRisk(healthScore: number): RiskLevel {
@@ -156,6 +198,16 @@ export function classifyRisk(healthScore: number): RiskLevel {
  */
 export function scorePackage(signals: PackageSignals): ScoredPackage {
   const securityPenalty = calculateSecurityPenalty(signals.unresolvedCves);
+  const mature = isMaturePackage(signals);
+
+  // If package is mature/complete, boost commit and release scores.
+  // Inactivity in a widely-used, issue-free package is intentional, not abandonment.
+  const commitScore = mature
+    ? Math.max(scoreCommits(signals.daysSinceLastCommit), 75)
+    : scoreCommits(signals.daysSinceLastCommit);
+  const releaseScore = mature
+    ? Math.max(scoreRelease(signals.daysSinceLastRelease), 75)
+    : scoreRelease(signals.daysSinceLastRelease);
 
   // Each signal: { score, weight, hasData }
   // When hasData is false, its weight is redistributed to signals with real data.
@@ -168,13 +220,13 @@ export function scorePackage(signals: PackageSignals): ScoredPackage {
   }> = [
     {
       key: "commitScore",
-      score: scoreCommits(signals.daysSinceLastCommit),
+      score: commitScore,
       weight: 0.25,
       hasData: signals.daysSinceLastCommit !== null,
     },
     {
       key: "releaseScore",
-      score: scoreRelease(signals.daysSinceLastRelease),
+      score: releaseScore,
       weight: 0.20,
       hasData: signals.daysSinceLastRelease !== null,
     },

@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import type { Ecosystem } from "@/types";
 import { fetchBatched } from "@/lib/fetcher";
 
-const VALID_ECOSYSTEMS = new Set<string>(["npm", "pypi", "cargo", "go", "rubygems"]);
+const VALID_ECOSYSTEMS = new Set<string>(["npm", "pypi", "cargo", "go", "rubygems", "packagist", "maven", "pub"]);
 
 const SAFE_PACKAGE_NAME = /^[a-zA-Z0-9._@/\-]+$/;
 

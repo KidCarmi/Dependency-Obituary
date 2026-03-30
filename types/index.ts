@@ -98,6 +98,7 @@ export interface SignalsResponse {
   has_multiple_maintainers: boolean | null;
   unresolved_cves: number;
   license: string | null;
+  is_mature: boolean;
 }
 
 // ─── Score Breakdown (API response shape) ───────────────────────────────────
