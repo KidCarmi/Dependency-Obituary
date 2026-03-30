@@ -36,6 +36,19 @@ if (!GITHUB_TOKEN) {
 const GITHUB_API = "https://api.github.com";
 const TIMEOUT_MS = 8000;
 
+const ALLOWED_GITHUB_HOSTNAMES = new Set([
+  "api.github.com",
+]);
+
+function isAllowedGitHubUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_GITHUB_HOSTNAMES.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function buildHeaders(token?: string): Record<string, string> {
   return {
     Accept: "application/vnd.github+json",
@@ -80,6 +93,10 @@ export function parseGitHubUrl(
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
 async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<T>> {
+  if (!isAllowedGitHubUrl(url)) {
+    return { success: false, error: "network_error" };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

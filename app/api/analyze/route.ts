@@ -18,7 +18,10 @@ import { auth } from "@/lib/auth";
 
 const MAX_PACKAGES = 500;
 
-const VALID_ECOSYSTEMS = new Set(["npm", "pypi", "cargo", "go", "rubygems", "packagist", "maven", "pub"]);
+const VALID_ECOSYSTEMS: ReadonlySet<string> = new Set(["npm", "pypi", "cargo", "go", "rubygems", "packagist", "maven", "pub"]);
+
+const SAFE_PACKAGE_NAME = /^[a-zA-Z0-9._@/:~\-]+$/;
+const MAX_PACKAGE_NAME_LENGTH = 214; // npm max is 214
 
 function isValidEcosystem(value: unknown): value is Ecosystem {
   return typeof value === "string" && VALID_ECOSYSTEMS.has(value);
@@ -27,7 +30,10 @@ function isValidEcosystem(value: unknown): value is Ecosystem {
 function isValidPackage(value: unknown): value is Package {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
-  return typeof obj.name === "string" && typeof obj.version === "string";
+  if (typeof obj.name !== "string" || typeof obj.version !== "string") return false;
+  if (obj.name.length === 0 || obj.name.length > MAX_PACKAGE_NAME_LENGTH) return false;
+  if (!SAFE_PACKAGE_NAME.test(obj.name)) return false;
+  return true;
 }
 
 export async function POST(request: Request): Promise<NextResponse> {

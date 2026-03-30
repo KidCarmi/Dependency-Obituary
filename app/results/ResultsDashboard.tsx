@@ -268,16 +268,23 @@ function ResultRow({
   expanded: boolean;
   onToggle: () => void;
 }): React.ReactElement {
-  const registryLabel = result.npm_url
-    ? result.npm_url.includes("pypi") ? "PyPI"
-    : result.npm_url.includes("crates.io") ? "crates.io"
-    : result.npm_url.includes("rubygems") ? "RubyGems"
-    : result.npm_url.includes("pkg.go.dev") ? "Go"
-    : result.npm_url.includes("packagist") ? "Packagist"
-    : result.npm_url.includes("mvnrepository") ? "Maven"
-    : result.npm_url.includes("pub.dev") ? "pub.dev"
-    : "npm"
-    : null;
+  const registryLabel = (() => {
+    if (!result.npm_url) return null;
+    try {
+      const hostname = new URL(result.npm_url).hostname;
+      if (hostname === "pypi.org" || hostname.endsWith(".pypi.org")) return "PyPI";
+      if (hostname === "crates.io" || hostname.endsWith(".crates.io")) return "crates.io";
+      if (hostname === "rubygems.org" || hostname.endsWith(".rubygems.org")) return "RubyGems";
+      if (hostname === "pkg.go.dev" || hostname.endsWith(".pkg.go.dev")) return "Go";
+      if (hostname === "packagist.org" || hostname.endsWith(".packagist.org")) return "Packagist";
+      if (hostname === "mvnrepository.com" || hostname.endsWith(".mvnrepository.com")) return "Maven";
+      if (hostname === "pub.dev" || hostname.endsWith(".pub.dev")) return "pub.dev";
+      if (hostname === "www.npmjs.com" || hostname === "npmjs.com") return "npm";
+      return "npm";
+    } catch {
+      return "npm";
+    }
+  })();
 
   return (
     <>

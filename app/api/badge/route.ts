@@ -14,6 +14,8 @@ import { fetchBatched } from "@/lib/fetcher";
 
 const VALID_ECOSYSTEMS = new Set<string>(["npm", "pypi", "cargo", "go", "rubygems"]);
 
+const SAFE_PACKAGE_NAME = /^[a-zA-Z0-9._@/\-]+$/;
+
 function scoreToColor(score: number | null): string {
   if (score === null) return "#9ca3af"; // gray
   if (score >= 80) return "#22c55e"; // green
@@ -40,8 +42,8 @@ function buildSvg(
   const rightWidth = label.length * 6.5 + 12;
   const totalWidth = leftWidth + rightWidth;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${packageName}: ${label}">
-  <title>${packageName}: ${label} (${riskLevel})</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${escapeXml(packageName)}: ${escapeXml(label)}">
+  <title>${escapeXml(packageName)}: ${escapeXml(label)} (${escapeXml(riskLevel)})</title>
   <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -68,7 +70,8 @@ function escapeXml(str: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -76,7 +79,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const ecosystem = searchParams.get("ecosystem") || "npm";
   const packageName = searchParams.get("package");
 
-  if (!packageName) {
+  if (!packageName || !SAFE_PACKAGE_NAME.test(packageName)) {
     return new NextResponse(
       buildSvg("error", null, "unknown"),
       {
