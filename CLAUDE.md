@@ -150,3 +150,22 @@ AUTH_SECRET=...                         # Required if auth enabled
 | `cache.ts` | Test: HIT, MISS, versioned keys |
 
 Run: `npm run test` (144 tests passing)
+
+---
+
+## GitHub App Integration
+
+The GitHub App auto-comments health reports on PRs that touch dependency files.
+
+**Webhook:** `POST /api/github/webhook` — verifies signature, fetches changed files, analyzes, posts comment.
+
+**Auth flow:** JWT (RS256 with private key) → installation access token (1hr, cached).
+
+**Activity logging:** Events stored in Redis (`feed:{installation_id}`, capped at 100).
+
+**Env vars:**
+```bash
+GITHUB_APP_ID=123456                    # App ID from GitHub App settings
+GITHUB_APP_PRIVATE_KEY="-----BEGIN..."  # PEM private key
+GITHUB_WEBHOOK_SECRET=...               # Webhook secret for signature verification
+```
