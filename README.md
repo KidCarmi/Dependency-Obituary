@@ -2,6 +2,9 @@
 
 **Your dependencies are dying. You just don't know it yet.**
 
+[![CI](https://github.com/KidCarmi/Dependency-Obituary/actions/workflows/ci.yml/badge.svg)](https://github.com/KidCarmi/Dependency-Obituary/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/KidCarmi/Dependency-Obituary/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/KidCarmi/Dependency-Obituary/security/code-scanning)
+[![Gitleaks](https://img.shields.io/badge/gitleaks-protected-blue)](https://github.com/KidCarmi/Dependency-Obituary/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Built with Next.js](https://img.shields.io/badge/built%20with-Next.js%2016-black)](https://nextjs.org)
 [![Deployed on Vercel](https://img.shields.io/badge/deployed%20on-Vercel-black)](https://vercel.com)
