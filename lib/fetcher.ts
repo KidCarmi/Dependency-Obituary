@@ -279,8 +279,12 @@ async function fetchPackageHealth(
       npmUrl = `https://www.npmjs.com/package/${pkg.name}`;
       githubUrl = extractGitHubUrl(pkgResult.data);
 
-      // Extract license
-      const npmLicense = pkgResult.data.license;
+      // Extract license — check top-level first, then latest version
+      let npmLicense: string | { type?: string } | undefined = pkgResult.data.license;
+      if (!npmLicense && pkgResult.data["dist-tags"]?.latest && pkgResult.data.versions) {
+        const latestVer = pkgResult.data["dist-tags"].latest;
+        npmLicense = pkgResult.data.versions[latestVer]?.license;
+      }
       registryData.license = typeof npmLicense === "string"
         ? npmLicense
         : typeof npmLicense === "object" && npmLicense !== null && "type" in npmLicense
