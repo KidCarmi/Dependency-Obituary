@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { AnalyzeResponse } from "@/types";
 import ResultsDashboard from "../results/ResultsDashboard";
@@ -12,7 +12,7 @@ interface SharedReport {
   created_at: string;
 }
 
-export default function SharePage(): React.ReactElement {
+function ShareContent(): React.ReactElement {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const [report, setReport] = useState<SharedReport | null>(null);
@@ -81,5 +81,19 @@ export default function SharePage(): React.ReactElement {
       </div>
       <ResultsDashboard data={report.data} />
     </main>
+  );
+}
+
+export default function SharePage(): React.ReactElement {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </main>
+      }
+    >
+      <ShareContent />
+    </Suspense>
   );
 }
