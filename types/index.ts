@@ -97,6 +97,7 @@ export interface SignalsResponse {
   weekly_downloads_12w_ago: number | null;
   has_multiple_maintainers: boolean | null;
   unresolved_cves: number;
+  license: string | null;
 }
 
 // ─── Score Breakdown (API response shape) ───────────────────────────────────
@@ -206,6 +207,7 @@ export interface GitHubSecurityAdvisory {
 
 export interface NpmPackageData {
   name: string;
+  license?: string | { type?: string };
   repository?: {
     type?: string;
     url?: string;
@@ -230,6 +232,7 @@ export interface PyPIPackageData {
   info: {
     name: string;
     version: string;
+    license: string | null;
     project_urls: Record<string, string> | null;
     maintainer: string | null;
     author: string | null;

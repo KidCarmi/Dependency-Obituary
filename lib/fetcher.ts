@@ -128,6 +128,7 @@ interface RegistryData {
   weeklyDownloads12wAgo: number | null;
   hasMultipleMaintainers: boolean | null;
   daysSinceLastRelease: number | null;
+  license: string | null;
 }
 
 function buildSignals(
@@ -214,7 +215,7 @@ function buildSignals(
   };
 }
 
-function buildSignalsResponse(signals: PackageSignals): SignalsResponse {
+function buildSignalsResponse(signals: PackageSignals, license: string | null): SignalsResponse {
   return {
     days_since_last_commit: signals.daysSinceLastCommit,
     days_since_last_release: signals.daysSinceLastRelease,
@@ -231,6 +232,7 @@ function buildSignalsResponse(signals: PackageSignals): SignalsResponse {
     weekly_downloads_12w_ago: signals.weeklyDownloads12wAgo,
     has_multiple_maintainers: signals.hasMultipleMaintainers,
     unresolved_cves: signals.unresolvedCves,
+    license,
   };
 }
 
@@ -256,6 +258,7 @@ async function fetchPackageHealth(
       weeklyDownloads12wAgo: null,
       hasMultipleMaintainers: null,
       daysSinceLastRelease: null,
+      license: null,
     };
     let npmUrl: string | null = null;
 
@@ -275,6 +278,14 @@ async function fetchPackageHealth(
 
       npmUrl = `https://www.npmjs.com/package/${pkg.name}`;
       githubUrl = extractGitHubUrl(pkgResult.data);
+
+      // Extract license
+      const npmLicense = pkgResult.data.license;
+      registryData.license = typeof npmLicense === "string"
+        ? npmLicense
+        : typeof npmLicense === "object" && npmLicense !== null && "type" in npmLicense
+          ? (npmLicense.type ?? null)
+          : null;
 
       registryData.weeklyDownloads = dlResult.success
         ? dlResult.data.downloads
@@ -312,6 +323,7 @@ async function fetchPackageHealth(
 
       npmUrl = `https://pypi.org/project/${pkg.name}`;
       githubUrl = extractGitHubUrl(pkgResult.data);
+      registryData.license = pkgResult.data.info.license ?? null;
 
       registryData.weeklyDownloads = dlResult.success
         ? dlResult.data.data.last_week
@@ -567,7 +579,7 @@ async function fetchPackageHealth(
       health_score: scored.healthScore,
       risk_level: scored.riskLevel,
       data_confidence: githubUrl ? "high" : "low",
-      signals: buildSignalsResponse(signals),
+      signals: buildSignalsResponse(signals, registryData.license),
       score_breakdown: {
         commit_score: scored.breakdown.commitScore,
         release_score: scored.breakdown.releaseScore,
