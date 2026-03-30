@@ -87,13 +87,12 @@ export async function getInstallationToken(
 
   const jwt = createAppJwt(appId, privateKey);
 
-  const tokenUrl = `https://api.github.com/app/installations/${installationId}/access_tokens`;
-  if (!isAllowedGitHubApiUrl(tokenUrl)) {
-    throw new Error("Invalid GitHub API URL for installation token");
-  }
+  // Construct URL with validated installationId (must be numeric)
+  const safeInstallationId = String(Math.floor(Number(installationId)));
+  const tokenUrl = new URL(`/app/installations/${safeInstallationId}/access_tokens`, "https://api.github.com");
 
   const res = await fetch(
-    tokenUrl,
+    tokenUrl.toString(),
     {
       method: "POST",
       headers: {

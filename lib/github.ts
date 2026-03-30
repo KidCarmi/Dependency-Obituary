@@ -93,7 +93,15 @@ export function parseGitHubUrl(
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
 async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<T>> {
-  if (!isAllowedGitHubUrl(url)) {
+  // Validate and reconstruct URL - CodeQL SSRF mitigation
+  let validatedUrl: string;
+  try {
+    const parsed = new URL(url);
+    if (!ALLOWED_GITHUB_HOSTNAMES.has(parsed.hostname)) {
+      return { success: false, error: "network_error" };
+    }
+    validatedUrl = parsed.toString();
+  } catch {
     return { success: false, error: "network_error" };
   }
 
@@ -101,7 +109,7 @@ async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(validatedUrl, {
       headers: buildHeaders(token),
       signal: controller.signal,
     });

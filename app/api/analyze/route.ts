@@ -47,27 +47,25 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const { ecosystem, packages } = body as AnalyzeRequest;
+    const obj = body as Record<string, unknown>;
+    const ecosystem = obj.ecosystem;
+    const packages = obj.packages;
 
     if (!isValidEcosystem(ecosystem)) {
-      return NextResponse.json(
-        { error: "Invalid ecosystem" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid ecosystem" }, { status: 400 });
     }
 
     if (!Array.isArray(packages) || packages.length === 0) {
-      return NextResponse.json(
-        { error: "packages must be a non-empty array" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "packages must be a non-empty array" }, { status: 400 });
     }
 
-    if (!packages.every(isValidPackage)) {
-      return NextResponse.json(
-        { error: "Each package must have name and version strings" },
-        { status: 400 }
-      );
+    // Validate and sanitize each package before processing
+    const validatedPackages: Package[] = [];
+    for (const pkg of packages) {
+      if (!isValidPackage(pkg)) {
+        return NextResponse.json({ error: "Each package must have a valid name and version" }, { status: 400 });
+      }
+      validatedPackages.push({ name: pkg.name, version: pkg.version });
     }
 
     // Use the signed-in user's GitHub token if available
@@ -81,7 +79,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       // Auth not configured or failed — use shared token
     }
 
-    const trimmedPackages = packages.slice(0, MAX_PACKAGES);
+    const trimmedPackages = validatedPackages.slice(0, MAX_PACKAGES);
     const results = await fetchBatched(
       trimmedPackages,
       ecosystem,
