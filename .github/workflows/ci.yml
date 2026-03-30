@@ -11,10 +11,10 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
       - run: npm ci
       - name: TypeScript strict check
@@ -26,10 +26,10 @@ jobs:
     name: Tests (144)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
       - run: npm ci
       - name: Run tests
@@ -40,10 +40,10 @@ jobs:
     name: SCA - Dependency Vulnerabilities
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
       - run: npm ci
       - name: npm audit (high + critical)
@@ -54,7 +54,7 @@ jobs:
     name: Gitleaks - Secret Scanner
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Run Gitleaks
@@ -69,23 +69,23 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
       - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   # ─── Custom Security Checks ────────────────────────────────────────────
   security-checks:
     name: Security Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check for hardcoded secrets
         run: |
@@ -159,10 +159,10 @@ jobs:
       UPSTASH_REDIS_REST_URL: https://fake.upstash.io
       UPSTASH_REDIS_REST_TOKEN: fake_token
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
       - run: npm ci
       - name: Build
