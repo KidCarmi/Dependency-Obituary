@@ -149,4 +149,4 @@ AUTH_SECRET=...                         # Required if auth enabled
 | `parser.ts` | All formats: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile |
 | `cache.ts` | Test: HIT, MISS, versioned keys |
 
-Run: `npm run test` (131 tests passing)
+Run: `npm run test` (144 tests passing)
