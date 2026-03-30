@@ -47,25 +47,30 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const obj = body as Record<string, unknown>;
-    const ecosystem = obj.ecosystem;
-    const packages = obj.packages;
-
-    if (!isValidEcosystem(ecosystem)) {
+    // Extract and validate each field independently - no casting of raw body
+    const rawEcosystem = (body as Record<string, unknown>).ecosystem;
+    if (!isValidEcosystem(rawEcosystem)) {
       return NextResponse.json({ error: "Invalid ecosystem" }, { status: 400 });
     }
+    // After validation, ecosystem is a known literal from our Set
+    const ecosystem: Ecosystem = rawEcosystem;
 
-    if (!Array.isArray(packages) || packages.length === 0) {
+    const rawPackages = (body as Record<string, unknown>).packages;
+    if (!Array.isArray(rawPackages) || rawPackages.length === 0) {
       return NextResponse.json({ error: "packages must be a non-empty array" }, { status: 400 });
     }
 
-    // Validate and sanitize each package before processing
+    // Build clean array from validated inputs only
     const validatedPackages: Package[] = [];
-    for (const pkg of packages) {
-      if (!isValidPackage(pkg)) {
+    for (const raw of rawPackages) {
+      if (!isValidPackage(raw)) {
         return NextResponse.json({ error: "Each package must have a valid name and version" }, { status: 400 });
       }
-      validatedPackages.push({ name: pkg.name, version: pkg.version });
+      // Construct new object from validated strings only - no pass-through
+      validatedPackages.push({
+        name: String(raw.name),
+        version: String(raw.version),
+      });
     }
 
     // Use the signed-in user's GitHub token if available

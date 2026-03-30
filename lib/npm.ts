@@ -34,41 +34,37 @@ const NO_RATE_LIMIT: RateLimitState = {
 
 // ─── URL Allowlist ──────────────────────────────────────────────────────────
 
-const ALLOWED_REGISTRY_HOSTNAMES = new Set([
-  "registry.npmjs.org",
-  "api.npmjs.org",
-  "pypi.org",
-  "pypistats.org",
-  "crates.io",
-  "proxy.golang.org",
-  "rubygems.org",
-  "repo.packagist.org",
-  "search.maven.org",
-  "pub.dev",
+// Map of allowed hostnames to their hardcoded origins
+const ALLOWED_REGISTRY_ORIGINS: ReadonlyMap<string, string> = new Map([
+  ["registry.npmjs.org", "https://registry.npmjs.org"],
+  ["api.npmjs.org", "https://api.npmjs.org"],
+  ["pypi.org", "https://pypi.org"],
+  ["pypistats.org", "https://pypistats.org"],
+  ["crates.io", "https://crates.io"],
+  ["proxy.golang.org", "https://proxy.golang.org"],
+  ["rubygems.org", "https://rubygems.org"],
+  ["repo.packagist.org", "https://repo.packagist.org"],
+  ["search.maven.org", "https://search.maven.org"],
+  ["pub.dev", "https://pub.dev"],
 ]);
 
-function isAllowedRegistryUrl(url: string): boolean {
+function buildSafeRegistryUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
-    return ALLOWED_REGISTRY_HOSTNAMES.has(parsed.hostname);
+    const origin = ALLOWED_REGISTRY_ORIGINS.get(parsed.hostname);
+    if (!origin) return null;
+    // Construct from hardcoded origin + parsed path/search (no user-controlled origin)
+    return origin + parsed.pathname + parsed.search;
   } catch {
-    return false;
+    return null;
   }
 }
 
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
 async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
-  // Validate URL against allowlist - CodeQL SSRF mitigation
-  let validatedUrl: string;
-  try {
-    const parsed = new URL(url);
-    if (!ALLOWED_REGISTRY_HOSTNAMES.has(parsed.hostname)) {
-      return { success: false, error: "network_error" };
-    }
-    // Reconstruct from parsed URL to prevent injection
-    validatedUrl = parsed.toString();
-  } catch {
+  const safeUrl = buildSafeRegistryUrl(url);
+  if (!safeUrl) {
     return { success: false, error: "network_error" };
   }
 
@@ -76,7 +72,7 @@ async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const res = await fetch(validatedUrl, { signal: controller.signal });
+    const res = await fetch(safeUrl, { signal: controller.signal });
 
     if (res.status === 404) {
       return { success: false, error: "not_found" };

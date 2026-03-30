@@ -36,16 +36,16 @@ if (!GITHUB_TOKEN) {
 const GITHUB_API = "https://api.github.com";
 const TIMEOUT_MS = 8000;
 
-const ALLOWED_GITHUB_HOSTNAMES = new Set([
-  "api.github.com",
-]);
+const GITHUB_API_ORIGIN = "https://api.github.com";
 
-function isAllowedGitHubUrl(url: string): boolean {
+function buildSafeGitHubUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
-    return ALLOWED_GITHUB_HOSTNAMES.has(parsed.hostname);
+    if (parsed.hostname !== "api.github.com") return null;
+    // Reconstruct from hardcoded origin (not user input)
+    return GITHUB_API_ORIGIN + parsed.pathname + parsed.search;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -93,15 +93,8 @@ export function parseGitHubUrl(
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
 async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<T>> {
-  // Validate and reconstruct URL - CodeQL SSRF mitigation
-  let validatedUrl: string;
-  try {
-    const parsed = new URL(url);
-    if (!ALLOWED_GITHUB_HOSTNAMES.has(parsed.hostname)) {
-      return { success: false, error: "network_error" };
-    }
-    validatedUrl = parsed.toString();
-  } catch {
+  const safeUrl = buildSafeGitHubUrl(url);
+  if (!safeUrl) {
     return { success: false, error: "network_error" };
   }
 
@@ -109,7 +102,7 @@ async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const res = await fetch(validatedUrl, {
+    const res = await fetch(safeUrl, {
       headers: buildHeaders(token),
       signal: controller.signal,
     });
