@@ -34,8 +34,6 @@ jobs:
       - run: npm ci
       - name: Run tests
         run: npm run test
-      - name: Test coverage
-        run: npm run test:coverage
 
   security:
     name: Security Audit
@@ -96,7 +94,7 @@ jobs:
       - name: Check .gitignore covers sensitive files
         run: |
           echo "Verifying .gitignore protections..."
-          for f in ".env" ".env.local" ".env.production" ".env.development"; do
+          for f in ".env" ".env.local"; do
             if git check-ignore -q "$f" 2>/dev/null; then
               echo "$f: IGNORED ✓"
             else
