@@ -176,6 +176,89 @@ export function parseGemfile(content: string): Package[] {
   return packages;
 }
 
+// ─── composer.json Parser (PHP) ────────────────────────────────────────────
+
+export function parseComposerJson(content: string): Package[] {
+  try {
+    const json: unknown = JSON.parse(content);
+    if (typeof json !== "object" || json === null) return [];
+
+    const pkg = json as Record<string, unknown>;
+    const packages: Package[] = [];
+
+    for (const field of ["require", "require-dev"] as const) {
+      const deps = pkg[field];
+      if (typeof deps !== "object" || deps === null) continue;
+
+      for (const [name, version] of Object.entries(deps as Record<string, unknown>)) {
+        if (typeof version === "string" && name !== "php" && !name.startsWith("ext-")) {
+          packages.push({ name, version: version.replace(/^[\^~>=<*]*/, "") || "0.0.0" });
+        }
+      }
+    }
+
+    return packages;
+  } catch {
+    return [];
+  }
+}
+
+// ─── build.gradle Parser (Java/Kotlin) ─────────────────────────────────────
+
+export function parseBuildGradle(content: string): Package[] {
+  const packages: Package[] = [];
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("//")) continue;
+
+    // implementation 'group:artifact:version'
+    const match = line.match(
+      /(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly)\s+['"]([^:]+):([^:]+):([^'"]+)['"]/
+    );
+    if (match) {
+      packages.push({
+        name: `${match[1]}:${match[2]}`,
+        version: match[3],
+      });
+    }
+  }
+
+  return packages;
+}
+
+// ─── pubspec.yaml Parser (Dart/Flutter) ─────────────────────────────────────
+
+export function parsePubspecYaml(content: string): Package[] {
+  const packages: Package[] = [];
+  let inDeps = false;
+
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine;
+    const trimmed = line.trimStart();
+
+    // Detect top-level sections (no indentation)
+    if (!line.startsWith(" ") && !line.startsWith("\t") && trimmed.endsWith(":")) {
+      const section = trimmed.slice(0, -1);
+      inDeps = section === "dependencies" || section === "dev_dependencies";
+      continue;
+    }
+
+    if (!inDeps) continue;
+
+    // Skip flutter SDK deps, empty lines, comments
+    if (!trimmed || trimmed.startsWith("#") || trimmed.includes("sdk:")) continue;
+
+    // "  package_name: ^1.0.0" or "  package_name: any"
+    const match = trimmed.match(/^([a-z_][a-z0-9_]*):\s*[\^~>=<]*([\d.]+)/);
+    if (match) {
+      packages.push({ name: match[1], version: match[2] });
+    }
+  }
+
+  return packages;
+}
+
 // ─── Auto-Detect Parser ────────────────────────────────────────────────────
 
 export function parseFile(
@@ -205,6 +288,23 @@ export function parseFile(
 
   if (lower === "gemfile" || lower.endsWith("/gemfile")) {
     return { ecosystem: "rubygems", packages: parseGemfile(content) };
+  }
+
+  if (lower === "composer.json" || lower.endsWith("/composer.json")) {
+    return { ecosystem: "packagist", packages: parseComposerJson(content) };
+  }
+
+  if (
+    lower === "build.gradle" ||
+    lower === "build.gradle.kts" ||
+    lower.endsWith("/build.gradle") ||
+    lower.endsWith("/build.gradle.kts")
+  ) {
+    return { ecosystem: "maven", packages: parseBuildGradle(content) };
+  }
+
+  if (lower === "pubspec.yaml" || lower.endsWith("/pubspec.yaml")) {
+    return { ecosystem: "pub", packages: parsePubspecYaml(content) };
   }
 
   // Default: try each format by content

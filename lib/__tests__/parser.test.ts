@@ -5,6 +5,9 @@ import {
   parseCargoToml,
   parseGoMod,
   parseGemfile,
+  parseComposerJson,
+  parseBuildGradle,
+  parsePubspecYaml,
   parseFile,
 } from "@/lib/parser";
 
@@ -333,6 +336,102 @@ gem 'rails', '~> 7.0'
   });
 });
 
+// ─── parseComposerJson ──────────────────────────────────────────────────────
+
+describe("parseComposerJson", () => {
+  it("parses require and require-dev", () => {
+    const content = JSON.stringify({
+      require: { "laravel/framework": "^10.0", "guzzlehttp/guzzle": "^7.8" },
+      "require-dev": { "phpunit/phpunit": "^10.5" },
+    });
+    const result = parseComposerJson(content);
+    expect(result).toHaveLength(3);
+    expect(result[0].name).toBe("laravel/framework");
+  });
+
+  it("ignores php and ext- entries", () => {
+    const content = JSON.stringify({
+      require: { php: "^8.2", "ext-mbstring": "*", "laravel/framework": "^10.0" },
+    });
+    const result = parseComposerJson(content);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("laravel/framework");
+  });
+
+  it("returns empty for invalid JSON", () => {
+    expect(parseComposerJson("nope")).toEqual([]);
+  });
+});
+
+// ─── parseBuildGradle ───────────────────────────────────────────────────────
+
+describe("parseBuildGradle", () => {
+  it("parses implementation dependencies", () => {
+    const content = `dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web:3.2.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+}`;
+    const result = parseBuildGradle(content);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      name: "org.springframework.boot:spring-boot-starter-web",
+      version: "3.2.1",
+    });
+  });
+
+  it("handles double-quoted strings", () => {
+    const content = `implementation "com.google.guava:guava:33.0.0-jre"`;
+    const result = parseBuildGradle(content);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("com.google.guava:guava");
+  });
+
+  it("returns empty for empty content", () => {
+    expect(parseBuildGradle("")).toEqual([]);
+  });
+});
+
+// ─── parsePubspecYaml ───────────────────────────────────────────────────────
+
+describe("parsePubspecYaml", () => {
+  it("parses dependencies with versions", () => {
+    const content = `name: my_app
+dependencies:
+  http: ^1.1.0
+  provider: ^6.1.1
+  dio: ^5.4.0
+`;
+    const result = parsePubspecYaml(content);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual({ name: "http", version: "1.1.0" });
+  });
+
+  it("parses dev_dependencies", () => {
+    const content = `dependencies:
+  http: ^1.1.0
+dev_dependencies:
+  mockito: ^5.4.4
+`;
+    const result = parsePubspecYaml(content);
+    expect(result).toHaveLength(2);
+  });
+
+  it("ignores flutter SDK deps", () => {
+    const content = `dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+`;
+    const result = parsePubspecYaml(content);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("http");
+  });
+
+  it("returns empty for empty content", () => {
+    expect(parsePubspecYaml("")).toEqual([]);
+  });
+});
+
 // ─── parseFile ──────────────────────────────────────────────────────────────
 
 describe("parseFile", () => {
@@ -370,6 +469,27 @@ describe("parseFile", () => {
     const content = `gem 'rails', '~> 7.0'`;
     const result = parseFile("Gemfile", content);
     expect(result.ecosystem).toBe("rubygems");
+    expect(result.packages).toHaveLength(1);
+  });
+
+  it("detects composer.json by filename", () => {
+    const content = JSON.stringify({ require: { "laravel/framework": "^10.0" } });
+    const result = parseFile("composer.json", content);
+    expect(result.ecosystem).toBe("packagist");
+    expect(result.packages).toHaveLength(1);
+  });
+
+  it("detects build.gradle by filename", () => {
+    const content = `implementation 'com.google.guava:guava:33.0.0-jre'`;
+    const result = parseFile("build.gradle", content);
+    expect(result.ecosystem).toBe("maven");
+    expect(result.packages).toHaveLength(1);
+  });
+
+  it("detects pubspec.yaml by filename", () => {
+    const content = `dependencies:\n  http: ^1.1.0`;
+    const result = parseFile("pubspec.yaml", content);
+    expect(result.ecosystem).toBe("pub");
     expect(result.packages).toHaveLength(1);
   });
 

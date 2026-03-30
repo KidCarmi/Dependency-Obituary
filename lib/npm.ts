@@ -20,6 +20,8 @@ import type {
   GoModuleData,
   RubyGemData,
   RubyGemVersionData,
+  PackagistPackageData,
+  PubPackageData,
 } from "@/types";
 
 const TIMEOUT_MS = 8000;
@@ -62,7 +64,7 @@ async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
 // ─── GitHub URL Extraction ──────────────────────────────────────────────────
 
 export function extractGitHubUrl(
-  registryData: NpmPackageData | PyPIPackageData | CratesIoPackageData | RubyGemData
+  registryData: NpmPackageData | PyPIPackageData | CratesIoPackageData | RubyGemData | PackagistPackageData | PubPackageData
 ): string | null {
   // npm: repository.url field
   if ("repository" in registryData && typeof registryData.repository === "object" && registryData.repository?.url) {
@@ -105,6 +107,19 @@ export function extractGitHubUrl(
     if (registryData.homepage_uri?.includes("github.com")) {
       return registryData.homepage_uri;
     }
+  }
+
+  // Packagist: repository field
+  if ("package" in registryData && "repository" in (registryData as PackagistPackageData).package) {
+    const repo = (registryData as PackagistPackageData).package.repository;
+    if (repo?.includes("github.com")) return repo.replace(/\.git$/, "");
+  }
+
+  // pub.dev: repository or homepage in pubspec
+  if ("latest" in registryData) {
+    const pubspec = (registryData as PubPackageData).latest.pubspec;
+    if (pubspec.repository?.includes("github.com")) return pubspec.repository;
+    if (pubspec.homepage?.includes("github.com")) return pubspec.homepage;
   }
 
   return null;
@@ -216,5 +231,48 @@ export async function fetchRubyGemVersions(
 ): Promise<FetchResult<RubyGemVersionData[]>> {
   return registryFetch<RubyGemVersionData[]>(
     `https://rubygems.org/api/v1/versions/${encodeURIComponent(name)}.json`
+  );
+}
+
+// ─── Packagist (PHP/Composer) Endpoints ────────────────────────────────────
+
+export async function fetchPackagistPackage(
+  name: string
+): Promise<FetchResult<PackagistPackageData>> {
+  return registryFetch<PackagistPackageData>(
+    `https://repo.packagist.org/packages/${name}.json`
+  );
+}
+
+// ─── Maven Central (Java/Kotlin) — no direct API, use search ───────────────
+
+export interface MavenSearchResult {
+  response: {
+    docs: Array<{
+      g: string;
+      a: string;
+      latestVersion: string;
+      timestamp: number;
+    }>;
+  };
+}
+
+export async function fetchMavenPackage(
+  groupArtifact: string
+): Promise<FetchResult<MavenSearchResult>> {
+  const [group, artifact] = groupArtifact.split(":");
+  if (!group || !artifact) return { success: false, error: "not_found" };
+  return registryFetch<MavenSearchResult>(
+    `https://search.maven.org/solrsearch/select?q=g:${encodeURIComponent(group)}+AND+a:${encodeURIComponent(artifact)}&rows=1&wt=json`
+  );
+}
+
+// ─── pub.dev (Dart/Flutter) Endpoints ──────────────────────────────────────
+
+export async function fetchPubPackage(
+  name: string
+): Promise<FetchResult<PubPackageData>> {
+  return registryFetch<PubPackageData>(
+    `https://pub.dev/api/packages/${encodeURIComponent(name)}`
   );
 }

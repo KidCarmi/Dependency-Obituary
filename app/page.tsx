@@ -19,6 +19,9 @@ const ECOSYSTEMS = [
   { name: "Cargo", file: "Cargo.toml", color: "text-orange-400" },
   { name: "Go", file: "go.mod", color: "text-cyan-400" },
   { name: "RubyGems", file: "Gemfile", color: "text-red-300" },
+  { name: "PHP", file: "composer.json", color: "text-purple-400" },
+  { name: "Java", file: "build.gradle", color: "text-amber-400" },
+  { name: "Dart", file: "pubspec.yaml", color: "text-sky-400" },
 ];
 
 const STEPS = [
@@ -192,7 +195,7 @@ export default function HomePage(): React.ReactElement {
             <label className="cursor-pointer block">
               <input
                 type="file"
-                accept=".json,.txt,.toml,.mod,.lock"
+                accept=".json,.txt,.toml,.mod,.lock,.gradle,.kts,.yaml,.yml"
                 onChange={handleFileInput}
                 className="hidden"
               />

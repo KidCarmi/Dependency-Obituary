@@ -47,7 +47,11 @@ import {
   fetchRubyGemVersions,
   extractGitHubUrl,
   extractGitHubUrlFromGoModule,
+  fetchPackagistPackage,
+  fetchMavenPackage,
+  fetchPubPackage,
 } from "@/lib/npm";
+import type { MavenSearchResult } from "@/lib/npm";
 import { scorePackage } from "@/lib/scorer";
 
 // ─── Adaptive Delay ─────────────────────────────────────────────────────────
@@ -431,6 +435,82 @@ async function fetchPackageHealth(
 
       // No direct maintainer count from RubyGems basic API
       registryData.hasMultipleMaintainers = null;
+    } else if (ecosystem === "packagist") {
+      const pkgResult = await fetchPackagistPackage(pkg.name);
+
+      if (!pkgResult.success) {
+        return {
+          result: buildDegradedResult(pkg, pkgResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      npmUrl = `https://packagist.org/packages/${pkg.name}`;
+      githubUrl = extractGitHubUrl(pkgResult.data);
+
+      // Days since last release from versions
+      const versions = Object.values(pkgResult.data.package.versions);
+      if (versions.length > 0) {
+        const latest = versions.reduce((newest, v) => {
+          const t = new Date(v.time).getTime();
+          return t > new Date(newest.time).getTime() ? v : newest;
+        }, versions[0]);
+        registryData.daysSinceLastRelease = Math.floor(
+          (Date.now() - new Date(latest.time).getTime()) / (1000 * 3600 * 24)
+        );
+      }
+    } else if (ecosystem === "maven") {
+      const pkgResult = await fetchMavenPackage(pkg.name);
+
+      if (!pkgResult.success) {
+        return {
+          result: buildDegradedResult(pkg, pkgResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      const docs = (pkgResult.data as MavenSearchResult).response.docs;
+      if (docs.length === 0) {
+        return {
+          result: buildDegradedResult(pkg, "not_found"),
+          rateLimit: null,
+        };
+      }
+
+      const [group, artifact] = pkg.name.split(":");
+      npmUrl = `https://mvnrepository.com/artifact/${group}/${artifact}`;
+
+      // Try to find GitHub URL from common patterns
+      if (group.startsWith("com.github.") || group.startsWith("io.github.")) {
+        const parts = group.split(".");
+        githubUrl = `https://github.com/${parts[2]}/${artifact}`;
+      }
+
+      // Days since last release
+      if (docs[0].timestamp) {
+        registryData.daysSinceLastRelease = Math.floor(
+          (Date.now() - docs[0].timestamp) / (1000 * 3600 * 24)
+        );
+      }
+    } else if (ecosystem === "pub") {
+      const pkgResult = await fetchPubPackage(pkg.name);
+
+      if (!pkgResult.success) {
+        return {
+          result: buildDegradedResult(pkg, pkgResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      npmUrl = `https://pub.dev/packages/${pkg.name}`;
+      githubUrl = extractGitHubUrl(pkgResult.data);
+
+      // Days since last release
+      if (pkgResult.data.latest.published) {
+        registryData.daysSinceLastRelease = Math.floor(
+          (Date.now() - new Date(pkgResult.data.latest.published).getTime()) / (1000 * 3600 * 24)
+        );
+      }
     }
 
     // Step 2: Fetch GitHub data (if URL available)

@@ -13,7 +13,7 @@ export interface WatchlistEntry {
 
 // ─── Ecosystem ───────────────────────────────────────────────────────────────
 
-export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems";
+export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems" | "packagist" | "maven" | "pub";
 
 // ─── Package (from parser) ───────────────────────────────────────────────────
 
@@ -269,6 +269,46 @@ export interface CratesIoDownloadsData {
     date: string;
     downloads: number;
   }>;
+}
+
+// ─── Packagist (PHP/Composer) API Response Types ────────────────────────────
+
+export interface PackagistPackageData {
+  package: {
+    name: string;
+    repository: string;
+    github_stars: number;
+    fapiVersion: string;
+    versions: Record<
+      string,
+      {
+        version: string;
+        time: string;
+      }
+    >;
+  };
+}
+
+// ─── pub.dev (Dart/Flutter) API Response Types ──────────────────────────────
+
+export interface PubPackageData {
+  name: string;
+  latest: {
+    version: string;
+    pubspec: {
+      name: string;
+      repository?: string;
+      homepage?: string;
+    };
+    published: string;
+  };
+}
+
+export interface PubPackageScoreData {
+  grantedPoints: number;
+  maxPoints: number;
+  likeCount: number;
+  popularityScore: number;
 }
 
 // ─── Go Module Proxy API Response Types ─────────────────────────────────────
