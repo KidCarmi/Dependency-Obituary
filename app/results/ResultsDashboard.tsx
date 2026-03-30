@@ -451,6 +451,7 @@ function ExpandedDetails({
             <SignalItem label="Downloads 12w ago" value={signals.weekly_downloads_12w_ago !== null ? signals.weekly_downloads_12w_ago.toLocaleString() : null} />
             <SignalItem label="Multiple maintainers" value={signals.has_multiple_maintainers !== null ? (signals.has_multiple_maintainers ? "Yes" : "No") : null} />
             <SignalItem label="Unpatched CVEs" value={String(signals.unresolved_cves)} />
+            <LicenseBadge license={signals.license} />
           </div>
         </div>
       )}
@@ -463,6 +464,65 @@ function ExpandedDetails({
 function ConfidenceDot({ confidence }: { confidence: HealthResult["data_confidence"] }): React.ReactElement {
   const color = confidence === "high" ? "bg-green-400" : confidence === "low" ? "bg-yellow-400" : "bg-gray-500";
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
+}
+
+// ─── Signal Item ────────────────────────────────────────────────────────────
+
+// ─── License Badge ──────────────────────────────────────────────────────────
+
+const RESTRICTIVE_LICENSES = new Set([
+  "GPL-2.0", "GPL-3.0", "GPL-2.0-only", "GPL-3.0-only",
+  "GPL-2.0-or-later", "GPL-3.0-or-later",
+  "AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-or-later",
+  "LGPL-2.1", "LGPL-3.0", "LGPL-2.1-only", "LGPL-3.0-only",
+  "SSPL-1.0", "EUPL-1.2", "MPL-2.0",
+]);
+
+const PERMISSIVE_LICENSES = new Set([
+  "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause",
+  "ISC", "0BSD", "Unlicense", "CC0-1.0", "Zlib",
+]);
+
+function classifyLicense(license: string): "permissive" | "restrictive" | "unknown" {
+  const normalized = license.trim();
+  if (PERMISSIVE_LICENSES.has(normalized)) return "permissive";
+  if (RESTRICTIVE_LICENSES.has(normalized)) return "restrictive";
+  // Check partial matches
+  if (/\bMIT\b/i.test(normalized) || /\bApache/i.test(normalized) || /\bBSD\b/i.test(normalized) || /\bISC\b/i.test(normalized)) return "permissive";
+  if (/\bGPL\b/i.test(normalized) || /\bAGPL\b/i.test(normalized) || /\bSSPL\b/i.test(normalized)) return "restrictive";
+  return "unknown";
+}
+
+function LicenseBadge({ license }: { license: string | null }): React.ReactElement {
+  if (!license) {
+    return (
+      <div className="flex items-start gap-1.5">
+        <span className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-gray-600" />
+        <div>
+          <div className="text-xs text-gray-500">License</div>
+          <div className="text-sm font-medium text-gray-600">No data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const classification = classifyLicense(license);
+  const color = classification === "permissive" ? "text-green-400" : classification === "restrictive" ? "text-orange-400" : "text-gray-400";
+  const dotColor = classification === "permissive" ? "bg-green-400" : classification === "restrictive" ? "bg-orange-400" : "bg-gray-500";
+  const hint = classification === "restrictive" ? " (copyleft)" : classification === "permissive" ? " (permissive)" : "";
+
+  return (
+    <div className="flex items-start gap-1.5">
+      <span className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
+      <div>
+        <div className="text-xs text-gray-500">License</div>
+        <div className={`text-sm font-medium ${color}`}>
+          {license}
+          <span className="text-gray-600 text-xs ml-1">{hint}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Signal Item ────────────────────────────────────────────────────────────
