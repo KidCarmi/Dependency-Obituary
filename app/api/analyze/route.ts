@@ -36,42 +36,41 @@ function isValidPackage(value: unknown): value is Package {
   return true;
 }
 
+interface ValidatedInput {
+  ecosystem: Ecosystem;
+  packages: Package[];
+}
+
+function parseAndValidateBody(body: unknown): ValidatedInput | string {
+  if (typeof body !== "object" || body === null) return "Invalid request body";
+
+  const obj = body as Record<string, unknown>;
+
+  if (!isValidEcosystem(obj.ecosystem)) return "Invalid ecosystem";
+
+  if (!Array.isArray(obj.packages) || obj.packages.length === 0) {
+    return "packages must be a non-empty array";
+  }
+
+  const packages: Package[] = [];
+  for (const item of obj.packages) {
+    if (!isValidPackage(item)) return "Each package must have a valid name and version";
+    packages.push({ name: String(item.name), version: String(item.version) });
+  }
+
+  return { ecosystem: obj.ecosystem as Ecosystem, packages };
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body: unknown = await request.json();
+    const parsed = parseAndValidateBody(body);
 
-    if (typeof body !== "object" || body === null) {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
+    if (typeof parsed === "string") {
+      return NextResponse.json({ error: parsed }, { status: 400 });
     }
 
-    // Extract and validate each field independently - no casting of raw body
-    const rawEcosystem = (body as Record<string, unknown>).ecosystem;
-    if (!isValidEcosystem(rawEcosystem)) {
-      return NextResponse.json({ error: "Invalid ecosystem" }, { status: 400 });
-    }
-    // After validation, ecosystem is a known literal from our Set
-    const ecosystem: Ecosystem = rawEcosystem;
-
-    const rawPackages = (body as Record<string, unknown>).packages;
-    if (!Array.isArray(rawPackages) || rawPackages.length === 0) {
-      return NextResponse.json({ error: "packages must be a non-empty array" }, { status: 400 });
-    }
-
-    // Build clean array from validated inputs only
-    const validatedPackages: Package[] = [];
-    for (const raw of rawPackages) {
-      if (!isValidPackage(raw)) {
-        return NextResponse.json({ error: "Each package must have a valid name and version" }, { status: 400 });
-      }
-      // Construct new object from validated strings only - no pass-through
-      validatedPackages.push({
-        name: String(raw.name),
-        version: String(raw.version),
-      });
-    }
+    const { ecosystem, packages: validatedPackages } = parsed;
 
     // Use the signed-in user's GitHub token if available
     let userGithubToken: string | undefined;

@@ -33,21 +33,11 @@ if (!GITHUB_TOKEN) {
   );
 }
 
-const GITHUB_API = "https://api.github.com";
+// Base URL removed - githubFetch now takes path only, origin is hardcoded inside
 const TIMEOUT_MS = 8000;
 
-const GITHUB_API_ORIGIN = "https://api.github.com";
-
-function buildSafeGitHubUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname !== "api.github.com") return null;
-    // Reconstruct from hardcoded origin (not user input)
-    return GITHUB_API_ORIGIN + parsed.pathname + parsed.search;
-  } catch {
-    return null;
-  }
-}
+// Safe path pattern for GitHub API paths
+const SAFE_GITHUB_PATH = /^\/[a-zA-Z0-9._\-/?=&%@:+~]+$/;
 
 function buildHeaders(token?: string): Record<string, string> {
   return {
@@ -92,17 +82,18 @@ export function parseGitHubUrl(
 
 // ─── Fetch Helper ───────────────────────────────────────────────────────────
 
-async function githubFetch<T>(url: string, token?: string): Promise<FetchResult<T>> {
-  const safeUrl = buildSafeGitHubUrl(url);
-  if (!safeUrl) {
+async function githubFetch<T>(path: string, token?: string): Promise<FetchResult<T>> {
+  if (!SAFE_GITHUB_PATH.test(path)) {
     return { success: false, error: "network_error" };
   }
+  // Origin is always hardcoded - never from user input
+  const url = "https://api.github.com" + path;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    const res = await fetch(safeUrl, {
+    const res = await fetch(url, {
       headers: buildHeaders(token),
       signal: controller.signal,
     });
@@ -150,7 +141,7 @@ export async function fetchRepoMetadata(
   token?: string
 ): Promise<FetchResult<GitHubRepoMetadata>> {
   return githubFetch<GitHubRepoMetadata>(
-    `${GITHUB_API}/repos/${owner}/${repo}`,
+    `/repos/${owner}/${repo}`,
     token
   );
 }
@@ -161,7 +152,7 @@ export async function fetchLastCommit(
   token?: string
 ): Promise<FetchResult<GitHubCommit[]>> {
   return githubFetch<GitHubCommit[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/commits?per_page=1`,
+    `/repos/${owner}/${repo}/commits?per_page=1`,
     token
   );
 }
@@ -172,7 +163,7 @@ export async function fetchContributors(
   token?: string
 ): Promise<FetchResult<GitHubContributor[]>> {
   const result = await githubFetch<GitHubContributor[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`,
+    `/repos/${owner}/${repo}/stats/contributors`,
     token
   );
 
@@ -181,7 +172,7 @@ export async function fetchContributors(
   if (!result.success && result.error === "not_found") {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return githubFetch<GitHubContributor[]>(
-      `${GITHUB_API}/repos/${owner}/${repo}/stats/contributors`,
+      `/repos/${owner}/${repo}/stats/contributors`,
       token
     );
   }
@@ -195,7 +186,7 @@ export async function fetchRecentPRs(
   token?: string
 ): Promise<FetchResult<GitHubPullRequest[]>> {
   return githubFetch<GitHubPullRequest[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=closed&per_page=20`,
+    `/repos/${owner}/${repo}/pulls?state=closed&per_page=20`,
     token
   );
 }
@@ -206,7 +197,7 @@ export async function fetchSecurityAdvisories(
   token?: string
 ): Promise<FetchResult<GitHubSecurityAdvisory[]>> {
   return githubFetch<GitHubSecurityAdvisory[]>(
-    `${GITHUB_API}/repos/${owner}/${repo}/security-advisories`,
+    `/repos/${owner}/${repo}/security-advisories`,
     token
   );
 }
