@@ -1,0 +1,14 @@
+{
+  "name": "example-cpp-project",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "boost-beast",
+    "boost-asio",
+    "fmt",
+    "spdlog",
+    "nlohmann-json",
+    "openssl",
+    { "name": "curl", "version>=": "7.86.0" },
+    "zlib"
+  ]
+}

@@ -13,7 +13,7 @@ export interface WatchlistEntry {
 
 // ─── Ecosystem ───────────────────────────────────────────────────────────────
 
-export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems" | "packagist" | "maven" | "pub";
+export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems" | "packagist" | "maven" | "pub" | "vcpkg";
 
 // ─── Package (from parser) ───────────────────────────────────────────────────
 
@@ -314,6 +314,36 @@ export interface PubPackageScoreData {
   maxPoints: number;
   likeCount: number;
   popularityScore: number;
+}
+
+// ─── vcpkg (C++) API Response Types ─────────────────────────────────────────
+
+export interface VcpkgPortData {
+  name: string;
+  version?: string;
+  "version-semver"?: string;
+  "version-date"?: string;
+  "version-string"?: string;
+  homepage?: string;
+  description?: string | string[];
+  dependencies?: Array<string | { name: string }>;
+}
+
+export interface VcpkgVersionsData {
+  versions: Array<{
+    version: string;
+    "version-semver"?: string;
+    "version-date"?: string;
+    "version-string"?: string;
+    "git-tree": string;
+  }>;
+}
+
+export interface RepologyProject {
+  repo: string;
+  visiblename: string;
+  version: string;
+  status: string;
 }
 
 // ─── Go Module Proxy API Response Types ─────────────────────────────────────

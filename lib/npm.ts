@@ -22,6 +22,9 @@ import type {
   RubyGemVersionData,
   PackagistPackageData,
   PubPackageData,
+  VcpkgPortData,
+  VcpkgVersionsData,
+  RepologyProject,
 } from "@/types";
 
 const TIMEOUT_MS = 8000;
@@ -46,6 +49,8 @@ const ALLOWED_REGISTRY_ORIGINS: ReadonlyMap<string, string> = new Map([
   ["repo.packagist.org", "https://repo.packagist.org"],
   ["search.maven.org", "https://search.maven.org"],
   ["pub.dev", "https://pub.dev"],
+  ["raw.githubusercontent.com", "https://raw.githubusercontent.com"],
+  ["repology.org", "https://repology.org"],
 ]);
 
 function buildSafeRegistryUrl(url: string): string | null {
@@ -96,7 +101,7 @@ async function registryFetch<T>(url: string): Promise<FetchResult<T>> {
 
 // ─── GitHub URL Extraction ──────────────────────────────────────────────────
 
-function isGitHubHostname(url: string): boolean {
+export function isGitHubHostname(url: string): boolean {
   try {
     const parsed = new URL(url);
     return parsed.hostname === "github.com" || parsed.hostname.endsWith(".github.com");
@@ -316,5 +321,35 @@ export async function fetchPubPackage(
 ): Promise<FetchResult<PubPackageData>> {
   return registryFetch<PubPackageData>(
     `https://pub.dev/api/packages/${encodeURIComponent(name)}`
+  );
+}
+
+// ─── vcpkg (C++) Endpoints ─────────────────────────────────────────────────
+
+export async function fetchVcpkgPort(
+  name: string
+): Promise<FetchResult<VcpkgPortData>> {
+  return registryFetch<VcpkgPortData>(
+    `https://raw.githubusercontent.com/microsoft/vcpkg/master/ports/${encodeURIComponent(name)}/vcpkg.json`
+  );
+}
+
+export async function fetchVcpkgVersions(
+  name: string
+): Promise<FetchResult<VcpkgVersionsData>> {
+  // vcpkg versions are stored by first letter: versions/a-/abseil.json
+  const prefix = name.charAt(0).toLowerCase();
+  return registryFetch<VcpkgVersionsData>(
+    `https://raw.githubusercontent.com/microsoft/vcpkg/master/versions/${encodeURIComponent(prefix)}-/${encodeURIComponent(name)}.json`
+  );
+}
+
+// ─── Repology (cross-distro popularity) ────────────────────────────────────
+
+export async function fetchRepologyProject(
+  name: string
+): Promise<FetchResult<RepologyProject[]>> {
+  return registryFetch<RepologyProject[]>(
+    `https://repology.org/api/v1/project/${encodeURIComponent(name)}`
   );
 }

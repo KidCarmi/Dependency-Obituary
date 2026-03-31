@@ -12,6 +12,7 @@ const ECOSYSTEMS: { value: Ecosystem; label: string; placeholder: string }[] = [
   { value: "packagist", label: "PHP", placeholder: "laravel/framework" },
   { value: "maven", label: "Java", placeholder: "com.google.guava:guava" },
   { value: "pub", label: "Dart", placeholder: "http" },
+  { value: "vcpkg", label: "C++", placeholder: "boost" },
 ];
 
 export default function BadgePage(): React.ReactElement {

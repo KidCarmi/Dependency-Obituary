@@ -18,7 +18,7 @@ import { auth } from "@/lib/auth";
 
 const MAX_PACKAGES = 500;
 
-const VALID_ECOSYSTEMS: ReadonlySet<string> = new Set(["npm", "pypi", "cargo", "go", "rubygems", "packagist", "maven", "pub"]);
+const VALID_ECOSYSTEMS: ReadonlySet<string> = new Set(["npm", "pypi", "cargo", "go", "rubygems", "packagist", "maven", "pub", "vcpkg"]);
 
 const SAFE_PACKAGE_NAME = /^[a-zA-Z0-9._@/:~\-]+$/;
 const MAX_PACKAGE_NAME_LENGTH = 214; // npm max is 214
