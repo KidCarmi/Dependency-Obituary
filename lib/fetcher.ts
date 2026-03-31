@@ -47,9 +47,13 @@ import {
   fetchRubyGemVersions,
   extractGitHubUrl,
   extractGitHubUrlFromGoModule,
+  isGitHubHostname,
   fetchPackagistPackage,
   fetchMavenPackage,
   fetchPubPackage,
+  fetchVcpkgPort,
+  fetchVcpkgVersions,
+  fetchRepologyProject,
 } from "@/lib/npm";
 import type { MavenSearchResult } from "@/lib/npm";
 import { scorePackage, isMaturePackage } from "@/lib/scorer";
@@ -527,6 +531,57 @@ async function fetchPackageHealth(
         registryData.daysSinceLastRelease = Math.floor(
           (Date.now() - new Date(pkgResult.data.latest.published).getTime()) / (1000 * 3600 * 24)
         );
+      }
+    } else if (ecosystem === "vcpkg") {
+      const [portResult, versionsResult, repologyResult] = await Promise.all([
+        fetchVcpkgPort(pkg.name),
+        fetchVcpkgVersions(pkg.name),
+        fetchRepologyProject(pkg.name),
+      ]);
+
+      if (!portResult.success) {
+        return {
+          result: buildDegradedResult(pkg, portResult.error === "not_found" ? "not_found" : "timeout"),
+          rateLimit: null,
+        };
+      }
+
+      npmUrl = `https://vcpkg.io/en/package/${pkg.name}`;
+
+      // Extract GitHub URL from homepage
+      if (portResult.data.homepage) {
+        const hp = portResult.data.homepage;
+        if (isGitHubHostname(hp)) {
+          githubUrl = hp;
+        }
+      }
+
+      // Release cadence from version history
+      if (versionsResult.success && versionsResult.data.versions.length > 0) {
+        // Use version count as a proxy for release activity
+        const versionCount = versionsResult.data.versions.length;
+        // Estimate: if many versions, assume active development
+        if (versionCount > 20) {
+          registryData.daysSinceLastRelease = 30; // likely recent
+        } else if (versionCount > 5) {
+          registryData.daysSinceLastRelease = 180;
+        }
+      }
+
+      // Repology: count how many distros/repos package this library
+      if (repologyResult.success) {
+        const distroCount = repologyResult.data.length;
+        // Use distro count as popularity proxy for downloads
+        // 50+ repos = very popular, 10+ = popular, <10 = niche
+        if (distroCount >= 50) {
+          registryData.weeklyDownloads = 1000000; // proxy: very popular
+        } else if (distroCount >= 20) {
+          registryData.weeklyDownloads = 100000;
+        } else if (distroCount >= 5) {
+          registryData.weeklyDownloads = 10000;
+        } else {
+          registryData.weeklyDownloads = 1000;
+        }
       }
     }
 

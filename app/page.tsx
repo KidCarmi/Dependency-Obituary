@@ -23,6 +23,7 @@ const ECOSYSTEMS = [
   { name: "PHP", file: "composer.json", color: "text-purple-400" },
   { name: "Java", file: "build.gradle", color: "text-amber-400" },
   { name: "Dart", file: "pubspec.yaml", color: "text-sky-400" },
+  { name: "C++", file: "vcpkg.json", color: "text-pink-400" },
 ];
 
 const STEPS = [
@@ -263,7 +264,7 @@ export default function HomePage(): React.ReactElement {
             <label className="cursor-pointer block">
               <input
                 type="file"
-                accept=".json,.txt,.toml,.mod,.lock,.gradle,.kts,.yaml,.yml"
+                accept=".json,.txt,.toml,.mod,.lock,.gradle,.kts,.yaml,.yml,.json"
                 onChange={handleFileInput}
                 className="hidden"
               />

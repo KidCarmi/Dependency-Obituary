@@ -259,6 +259,37 @@ export function parsePubspecYaml(content: string): Package[] {
   return packages;
 }
 
+// ─── vcpkg.json Parser (C++) ────────────────────────────────────────────────
+
+export function parseVcpkgJson(content: string): Package[] {
+  try {
+    const json: unknown = JSON.parse(content);
+    if (typeof json !== "object" || json === null) return [];
+
+    const pkg = json as Record<string, unknown>;
+    const packages: Package[] = [];
+
+    const deps = pkg.dependencies;
+    if (!Array.isArray(deps)) return [];
+
+    for (const dep of deps) {
+      if (typeof dep === "string") {
+        packages.push({ name: dep, version: "0.0.0" });
+      } else if (typeof dep === "object" && dep !== null) {
+        const obj = dep as Record<string, unknown>;
+        if (typeof obj.name === "string") {
+          const version = typeof obj["version>="] === "string" ? obj["version>="] as string : "0.0.0";
+          packages.push({ name: obj.name, version });
+        }
+      }
+    }
+
+    return packages;
+  } catch {
+    return [];
+  }
+}
+
 // ─── Auto-Detect Parser ────────────────────────────────────────────────────
 
 export function parseFile(
@@ -305,6 +336,10 @@ export function parseFile(
 
   if (lower === "pubspec.yaml" || lower.endsWith("/pubspec.yaml")) {
     return { ecosystem: "pub", packages: parsePubspecYaml(content) };
+  }
+
+  if (lower === "vcpkg.json" || lower.endsWith("/vcpkg.json")) {
+    return { ecosystem: "vcpkg", packages: parseVcpkgJson(content) };
   }
 
   // Default: try each format by content

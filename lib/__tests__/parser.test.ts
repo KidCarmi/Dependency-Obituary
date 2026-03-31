@@ -8,6 +8,7 @@ import {
   parseComposerJson,
   parseBuildGradle,
   parsePubspecYaml,
+  parseVcpkgJson,
   parseFile,
 } from "@/lib/parser";
 
@@ -432,6 +433,42 @@ dev_dependencies:
   });
 });
 
+// ─── parseVcpkgJson ─────────────────────────────────────────────────────────
+
+describe("parseVcpkgJson", () => {
+  it("parses string dependencies", () => {
+    const content = JSON.stringify({
+      name: "my-project",
+      dependencies: ["boost-beast", "fmt", "spdlog"],
+    });
+    const result = parseVcpkgJson(content);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual({ name: "boost-beast", version: "0.0.0" });
+  });
+
+  it("parses object dependencies with version", () => {
+    const content = JSON.stringify({
+      dependencies: [
+        { name: "curl", "version>=": "7.86.0" },
+        "zlib",
+      ],
+    });
+    const result = parseVcpkgJson(content);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ name: "curl", version: "7.86.0" });
+    expect(result[1]).toEqual({ name: "zlib", version: "0.0.0" });
+  });
+
+  it("returns empty for no dependencies", () => {
+    const content = JSON.stringify({ name: "empty" });
+    expect(parseVcpkgJson(content)).toEqual([]);
+  });
+
+  it("returns empty for invalid JSON", () => {
+    expect(parseVcpkgJson("nope")).toEqual([]);
+  });
+});
+
 // ─── parseFile ──────────────────────────────────────────────────────────────
 
 describe("parseFile", () => {
@@ -491,6 +528,13 @@ describe("parseFile", () => {
     const result = parseFile("pubspec.yaml", content);
     expect(result.ecosystem).toBe("pub");
     expect(result.packages).toHaveLength(1);
+  });
+
+  it("detects vcpkg.json by filename", () => {
+    const content = JSON.stringify({ dependencies: ["fmt", "spdlog"] });
+    const result = parseFile("vcpkg.json", content);
+    expect(result.ecosystem).toBe("vcpkg");
+    expect(result.packages).toHaveLength(2);
   });
 
   it("returns empty packages for unknown file with no content", () => {
