@@ -446,7 +446,7 @@ export default function HomePage(): React.ReactElement {
           <a href="/terms" className="text-xs text-gray-700 hover:text-gray-500">Terms</a>
           <a href="https://github.com/KidCarmi/Dependency-Obituary" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-700 hover:text-gray-500">GitHub</a>
         </div>
-        <p className="text-xs text-gray-800 mt-1">v0.4.1</p>
+        <p className="text-xs text-gray-800 mt-1">v0.5.0</p>
       </footer>
     </main>
   );
