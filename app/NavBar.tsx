@@ -13,7 +13,7 @@ export default function NavBar(): React.ReactElement {
       <div className="flex items-center gap-6">
         <Link href="/" className="text-sm font-semibold text-gray-200 hover:text-white transition-colors">
           Dependency Obituary
-          <span className="ml-1.5 text-[10px] font-normal text-gray-600">v0.3.0</span>
+          <span className="ml-1.5 text-[10px] font-normal text-gray-600">v0.4.1</span>
         </Link>
         <Link href="/badge" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
           Badges
