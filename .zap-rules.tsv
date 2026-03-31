@@ -1,0 +1,5 @@
+10003	WARN	(Vulnerable JS Library - may flag bundled Next.js libs)
+10015	WARN	(Re-examine Cross-Domain JavaScript Source File Inclusion)
+10027	WARN	(Information Disclosure - Suspicious Comments)
+10098	IGNORE	(Cross-Domain Misconfiguration - Vercel CDN headers)
+10049	WARN	(Storable and Cacheable Content)
