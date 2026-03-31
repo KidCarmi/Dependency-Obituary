@@ -19,6 +19,8 @@ jobs:
           rules_file_name: ".zap-rules.tsv"
           fail_action: false
           cmd_options: "-a -j"
+          issue_title: ""
+          allow_issue_writing: false
 
       - name: Upload ZAP Report
         if: always()
