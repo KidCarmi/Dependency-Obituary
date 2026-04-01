@@ -31,19 +31,19 @@ function loadExample(filename: string): string {
 
 describe("Registry Reachability", { timeout: 15000 }, () => {
   const registries = [
-    { name: "npm", url: "https://registry.npmjs.org/react", field: "name" },
-    { name: "PyPI", url: "https://pypi.org/pypi/flask/json", field: "info" },
-    { name: "crates.io", url: "https://crates.io/api/v1/crates/serde", field: "crate" },
-    { name: "Go proxy", url: "https://proxy.golang.org/github.com/gin-gonic/gin/@latest", field: "Version" },
-    { name: "RubyGems", url: "https://rubygems.org/api/v1/gems/rails.json", field: "name" },
-    { name: "Packagist", url: "https://repo.packagist.org/packages/laravel/framework.json", field: "package" },
-    { name: "Maven", url: "https://search.maven.org/solrsearch/select?q=a:guava&rows=1&wt=json", field: "response" },
-    { name: "pub.dev", url: "https://pub.dev/api/packages/http", field: "name" },
+    { name: "npm", url: "https://registry.npmjs.org/react", field: "name", headers: {} },
+    { name: "PyPI", url: "https://pypi.org/pypi/flask/json", field: "info", headers: {} },
+    { name: "crates.io", url: "https://crates.io/api/v1/crates/serde", field: "crate", headers: { "User-Agent": "dependency-obituary-test" } },
+    { name: "Go proxy", url: "https://proxy.golang.org/github.com/gin-gonic/gin/@latest", field: "Version", headers: {} },
+    { name: "RubyGems", url: "https://rubygems.org/api/v1/gems/rails.json", field: "name", headers: {} },
+    { name: "Packagist", url: "https://repo.packagist.org/p2/laravel/framework.json", field: "packages", headers: {} },
+    { name: "Maven", url: "https://search.maven.org/solrsearch/select?q=a:guava&rows=1&wt=json", field: "response", headers: {} },
+    { name: "pub.dev", url: "https://pub.dev/api/packages/http", field: "name", headers: {} },
   ];
 
   for (const reg of registries) {
     it(`${reg.name} registry is reachable`, async () => {
-      const res = await fetch(reg.url);
+      const res = await fetch(reg.url, { headers: reg.headers });
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data[reg.field]).toBeDefined();
