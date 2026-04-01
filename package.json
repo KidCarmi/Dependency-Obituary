@@ -13,7 +13,7 @@
     "lint": "tsc --noEmit",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:integration": "vitest run lib/__tests__/integration/ --timeout 30000",
+    "test:integration": "vitest run lib/__tests__/integration/ --test-timeout 30000",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },

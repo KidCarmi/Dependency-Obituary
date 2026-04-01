@@ -30,7 +30,7 @@ function loadExample(filename: string): string {
 // ─── Registry Reachability ──────────────────────────────────────────────────
 
 describe("Registry Reachability", { timeout: 15000 }, () => {
-  const registries = [
+  const registries: Array<{ name: string; url: string; field: string; headers: Record<string, string> }> = [
     { name: "npm", url: "https://registry.npmjs.org/react", field: "name", headers: {} },
     { name: "PyPI", url: "https://pypi.org/pypi/flask/json", field: "info", headers: {} },
     { name: "crates.io", url: "https://crates.io/api/v1/crates/serde", field: "crate", headers: { "User-Agent": "dependency-obituary-test" } },
