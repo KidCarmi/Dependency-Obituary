@@ -222,7 +222,3 @@ The app degrades gracefully. Null signal weights are redistributed to available 
 ## License
 
 MIT. Do whatever you want with it.
-
----
-
-**Built in public. $0 to run. No VC. No bullshit.**
