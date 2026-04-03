@@ -27,8 +27,8 @@ export function buildCacheKey(
   version: string
 ): string {
   const majorVersion = version.split(".")[0] || "0";
-  // v7: improved maturity + deps.dev + packagist downloads + deprecated/archived — invalidates v4 cache
-  return `v7:dep:${ecosystem}:${name}:${majorVersion}`;
+  // v8: deps.dev GO uppercase fix — invalidates v4 cache
+  return `v8:dep:${ecosystem}:${name}:${majorVersion}`;
 }
 
 // ─── Dynamic TTL by Popularity ──────────────────────────────────────────────

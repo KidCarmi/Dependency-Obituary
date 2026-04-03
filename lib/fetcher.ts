@@ -413,7 +413,7 @@ async function fetchPackageHealth(
       // Parallel: Go proxy + deps.dev for dependent count
       const [modResult, depsDevResult] = await Promise.all([
         fetchGoModule(pkg.name),
-        fetchDepsDevPackage("go", pkg.name),
+        fetchDepsDevPackage("GO", pkg.name),
       ]);
 
       if (!modResult.success) {
