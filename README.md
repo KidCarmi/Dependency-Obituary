@@ -10,6 +10,19 @@
 [![Deployed on Vercel](https://img.shields.io/badge/deployed%20on-Vercel-black)](https://vercel.com)
 [![Running cost](https://img.shields.io/badge/running%20cost-%240-brightgreen)](#tech-stack)
 
+**Our dependencies, scored by us:**
+
+![next](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=next)
+![react](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=react)
+![react-dom](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=react-dom)
+![next-auth](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=next-auth)
+![upstash/redis](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=@upstash/redis)
+![typescript](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=typescript)
+![vitest](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=vitest)
+![tailwindcss](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=tailwindcss)
+![postcss](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=postcss)
+![autoprefixer](https://dependency-obituary.orelsec.com/api/badge?ecosystem=npm&package=autoprefixer)
+
 ---
 
 `npm audit` catches CVEs. Dependabot sends PRs. **Nothing catches abandonment.**
