@@ -485,7 +485,31 @@ function ExpandedDetails({
             <SignalItem label="Multiple maintainers" value={signals.has_multiple_maintainers !== null ? (signals.has_multiple_maintainers ? "Yes" : "No") : null} />
             <SignalItem label="Unpatched CVEs" value={String(signals.unresolved_cves)} />
             <LicenseBadge license={signals.license} />
-            {signals.is_mature && (
+            {signals.is_deprecated && (
+              <div className="flex items-start gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-red-400" />
+                <div>
+                  <div className="text-xs text-gray-500">Status</div>
+                  <div className="text-sm font-medium text-red-400">
+                    Deprecated
+                    <span className="text-gray-600 text-xs ml-1">(maintainer recommends migrating)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {signals.is_archived && (
+              <div className="flex items-start gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-orange-400" />
+                <div>
+                  <div className="text-xs text-gray-500">Status</div>
+                  <div className="text-sm font-medium text-orange-400">
+                    Archived
+                    <span className="text-gray-600 text-xs ml-1">(read-only, cannot receive patches)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {signals.is_mature && !signals.is_deprecated && !signals.is_archived && (
               <div className="flex items-start gap-1.5">
                 <span className="inline-block w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-blue-400" />
                 <div>

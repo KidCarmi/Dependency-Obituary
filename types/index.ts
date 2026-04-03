@@ -99,6 +99,8 @@ export interface SignalsResponse {
   unresolved_cves: number;
   license: string | null;
   is_mature: boolean;
+  is_deprecated: boolean;
+  is_archived: boolean;
 }
 
 // ─── Score Breakdown (API response shape) ───────────────────────────────────
@@ -218,7 +220,7 @@ export interface NpmPackageData {
     latest?: string;
   };
   time?: Record<string, string>;
-  versions?: Record<string, { license?: string | { type?: string } }>;
+  versions?: Record<string, { license?: string | { type?: string }; deprecated?: string }>;
 }
 
 export interface NpmDownloadsData {
@@ -284,6 +286,7 @@ export interface PackagistPackageData {
     repository: string;
     github_stars: number;
     fapiVersion: string;
+    downloads: { total: number; monthly: number; daily: number };
     versions: Record<
       string,
       {
@@ -344,6 +347,13 @@ export interface RepologyProject {
   visiblename: string;
   version: string;
   status: string;
+}
+
+// ─── deps.dev (Google) API Response Types ───────────────────────────────────
+
+export interface DepsDevPackageData {
+  packageKey: { system: string; name: string };
+  versions: Array<{ versionKey: { version: string } }>;
 }
 
 // ─── Go Module Proxy API Response Types ─────────────────────────────────────

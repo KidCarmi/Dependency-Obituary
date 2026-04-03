@@ -150,31 +150,39 @@ export function calculateSecurityPenalty(unresolvedCves: number): number {
  * Returns true if the package appears complete rather than abandoned.
  */
 export function isMaturePackage(signals: PackageSignals): boolean {
-  // Must have download data to assess
-  if (signals.weeklyDownloads === null) return false;
-
-  // Must have significant adoption (>10k weekly downloads)
-  if (signals.weeklyDownloads < 10000) return false;
-
-  // Must not have unresolved CVEs
+  // ── Hard gates (ALL paths) ──────────────────────────────────────────────
   if (signals.unresolvedCves > 0) return false;
-
-  // Download trend must be stable or growing (not declining)
-  if (
-    signals.weeklyDownloads12wAgo !== null &&
-    signals.weeklyDownloads12wAgo > 0
-  ) {
-    const changeRatio =
-      (signals.weeklyDownloads - signals.weeklyDownloads12wAgo) /
-      signals.weeklyDownloads12wAgo;
-    // If downloads are declining more than 20%, it's probably being abandoned
-    if (changeRatio < -0.2) return false;
-  }
-
-  // Must have very few open issues (or no issue data)
   if (signals.openIssues !== null && signals.openIssues > 15) return false;
 
-  return true;
+  // Staleness guard: no commits in 5+ years = not audited, not mature
+  if (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit > 1825) return false;
+
+  // ── Path 1: Download-aware (npm, PyPI, Cargo, RubyGems, Packagist, Pub, vcpkg) ──
+  if (signals.weeklyDownloads !== null && signals.weeklyDownloads >= 10000) {
+    // Download trend must be stable or growing
+    if (
+      signals.weeklyDownloads12wAgo !== null &&
+      signals.weeklyDownloads12wAgo > 0
+    ) {
+      const changeRatio =
+        (signals.weeklyDownloads - signals.weeklyDownloads12wAgo) /
+        signals.weeklyDownloads12wAgo;
+      if (changeRatio < -0.2) return false;
+    }
+    return true;
+  }
+
+  // ── Path 2: GitHub-only fallback (Maven, or when deps.dev/pub.dev is down) ──
+  // A package with no download data can still be mature if it shows
+  // recent activity (proves someone is maintaining it)
+  if (signals.weeklyDownloads === null) {
+    const hasRecentActivity =
+      (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit <= 365) ||
+      (signals.daysSinceLastRelease !== null && signals.daysSinceLastRelease <= 365);
+    return hasRecentActivity;
+  }
+
+  return false;
 }
 
 // ─── Risk Classification ──────────────────────────────────────────────────────

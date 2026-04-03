@@ -54,6 +54,8 @@ import {
   fetchVcpkgPort,
   fetchVcpkgVersions,
   fetchRepologyProject,
+  fetchPubPackageScore,
+  fetchDepsDevPackage,
 } from "@/lib/npm";
 import type { MavenSearchResult } from "@/lib/npm";
 import { scorePackage, isMaturePackage } from "@/lib/scorer";
@@ -133,6 +135,7 @@ interface RegistryData {
   hasMultipleMaintainers: boolean | null;
   daysSinceLastRelease: number | null;
   license: string | null;
+  isDeprecated: boolean;
 }
 
 function buildSignals(
@@ -154,9 +157,10 @@ function buildSignals(
   let openIssues: number | null = null;
   let closedIssues: number | null = null;
   if (github.metadata) {
-    openIssues = github.metadata.open_issues_count;
-    // Estimate closed issues — GitHub only gives open count in repo metadata
-    // We'll use the open count and set closed to null if we can't determine
+    // Guard: if issues are disabled, don't count 0 as "no issues"
+    if (github.metadata.has_issues) {
+      openIssues = github.metadata.open_issues_count;
+    }
     closedIssues = null;
   }
 
@@ -219,7 +223,7 @@ function buildSignals(
   };
 }
 
-function buildSignalsResponse(signals: PackageSignals, license: string | null): SignalsResponse {
+function buildSignalsResponse(signals: PackageSignals, registry: RegistryData): SignalsResponse {
   return {
     days_since_last_commit: signals.daysSinceLastCommit,
     days_since_last_release: signals.daysSinceLastRelease,
@@ -236,8 +240,10 @@ function buildSignalsResponse(signals: PackageSignals, license: string | null): 
     weekly_downloads_12w_ago: signals.weeklyDownloads12wAgo,
     has_multiple_maintainers: signals.hasMultipleMaintainers,
     unresolved_cves: signals.unresolvedCves,
-    license,
+    license: registry.license,
     is_mature: isMaturePackage(signals),
+    is_deprecated: registry.isDeprecated,
+    is_archived: false,
   };
 }
 
@@ -264,6 +270,7 @@ async function fetchPackageHealth(
       hasMultipleMaintainers: null,
       daysSinceLastRelease: null,
       license: null,
+      isDeprecated: false,
     };
     let npmUrl: string | null = null;
 
@@ -289,6 +296,10 @@ async function fetchPackageHealth(
       if (!npmLicense && pkgResult.data["dist-tags"]?.latest && pkgResult.data.versions) {
         const latestVer = pkgResult.data["dist-tags"].latest;
         npmLicense = pkgResult.data.versions[latestVer]?.license;
+        // Check if latest version is deprecated
+        if (pkgResult.data.versions[latestVer]?.deprecated) {
+          registryData.isDeprecated = true;
+        }
       }
       registryData.license = typeof npmLicense === "string"
         ? npmLicense
@@ -399,7 +410,11 @@ async function fetchPackageHealth(
         );
       }
     } else if (ecosystem === "go") {
-      const modResult = await fetchGoModule(pkg.name);
+      // Parallel: Go proxy + deps.dev for dependent count
+      const [modResult, depsDevResult] = await Promise.all([
+        fetchGoModule(pkg.name),
+        fetchDepsDevPackage("go", pkg.name),
+      ]);
 
       if (!modResult.success) {
         return {
@@ -417,7 +432,15 @@ async function fetchPackageHealth(
           (Date.now() - new Date(modResult.data.Time).getTime()) / (1000 * 3600 * 24)
         );
       }
-      // No download data available from Go proxy
+
+      // deps.dev: use version count as dependent popularity proxy
+      if (depsDevResult.success && depsDevResult.data.versions) {
+        const versionCount = depsDevResult.data.versions.length;
+        // More versions = more established package
+        if (versionCount >= 50) registryData.weeklyDownloads = 100000;
+        else if (versionCount >= 20) registryData.weeklyDownloads = 50000;
+        else if (versionCount >= 5) registryData.weeklyDownloads = 10000;
+      }
     } else if (ecosystem === "rubygems") {
       const [gemResult, versionsResult] = await Promise.all([
         fetchRubyGem(pkg.name),
@@ -480,6 +503,11 @@ async function fetchPackageHealth(
           (Date.now() - new Date(latest.time).getTime()) / (1000 * 3600 * 24)
         );
       }
+
+      // Extract downloads from Packagist response
+      if (pkgResult.data.package.downloads) {
+        registryData.weeklyDownloads = Math.round(pkgResult.data.package.downloads.monthly / 4);
+      }
     } else if (ecosystem === "maven") {
       const pkgResult = await fetchMavenPackage(pkg.name);
 
@@ -514,7 +542,11 @@ async function fetchPackageHealth(
         );
       }
     } else if (ecosystem === "pub") {
-      const pkgResult = await fetchPubPackage(pkg.name);
+      // Parallel: package data + score API
+      const [pkgResult, scoreResult] = await Promise.all([
+        fetchPubPackage(pkg.name),
+        fetchPubPackageScore(pkg.name),
+      ]);
 
       if (!pkgResult.success) {
         return {
@@ -531,6 +563,11 @@ async function fetchPackageHealth(
         registryData.daysSinceLastRelease = Math.floor(
           (Date.now() - new Date(pkgResult.data.latest.published).getTime()) / (1000 * 3600 * 24)
         );
+      }
+
+      // pub.dev score: popularityScore as download proxy
+      if (scoreResult.success) {
+        registryData.weeklyDownloads = Math.round(scoreResult.data.popularityScore * 1000000);
       }
     } else if (ecosystem === "vcpkg") {
       const [portResult, versionsResult, repologyResult] = await Promise.all([
@@ -632,14 +669,16 @@ async function fetchPackageHealth(
     // Step 3: Build signals and score
     const signals = buildSignals(githubData, registryData);
     const scored = scorePackage(signals);
+    const isArchived = githubData.metadata?.archived ?? false;
 
     const result: HealthResult = {
       name: pkg.name,
       version: pkg.version,
-      health_score: scored.healthScore,
-      risk_level: scored.riskLevel,
+      // Archived repos can't receive patches - cap at 70
+      health_score: isArchived ? Math.min(scored.healthScore, 70) : scored.healthScore,
+      risk_level: isArchived ? (scored.healthScore >= 60 ? "stable" : scored.riskLevel) : scored.riskLevel,
       data_confidence: githubUrl ? "high" : "low",
-      signals: buildSignalsResponse(signals, registryData.license),
+      signals: { ...buildSignalsResponse(signals, registryData), is_archived: isArchived },
       score_breakdown: {
         commit_score: scored.breakdown.commitScore,
         release_score: scored.breakdown.releaseScore,

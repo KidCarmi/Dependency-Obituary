@@ -22,6 +22,8 @@ import type {
   RubyGemVersionData,
   PackagistPackageData,
   PubPackageData,
+  PubPackageScoreData,
+  DepsDevPackageData,
   VcpkgPortData,
   VcpkgVersionsData,
   RepologyProject,
@@ -51,6 +53,7 @@ const ALLOWED_REGISTRY_ORIGINS: ReadonlyMap<string, string> = new Map([
   ["pub.dev", "https://pub.dev"],
   ["raw.githubusercontent.com", "https://raw.githubusercontent.com"],
   ["repology.org", "https://repology.org"],
+  ["api.deps.dev", "https://api.deps.dev"],
 ]);
 
 function buildSafeRegistryUrl(url: string): string | null {
@@ -351,5 +354,27 @@ export async function fetchRepologyProject(
 ): Promise<FetchResult<RepologyProject[]>> {
   return registryFetch<RepologyProject[]>(
     `https://repology.org/api/v1/project/${encodeURIComponent(name)}`
+  );
+}
+
+// ─── pub.dev Score Endpoint ────────────────────────────────────────────────
+
+export async function fetchPubPackageScore(
+  name: string
+): Promise<FetchResult<PubPackageScoreData>> {
+  return registryFetch<PubPackageScoreData>(
+    `https://pub.dev/api/packages/${encodeURIComponent(name)}/score`
+  );
+}
+
+// ─── deps.dev (Google) - Dependent counts ──────────────────────────────────
+
+export async function fetchDepsDevPackage(
+  system: string,
+  name: string
+): Promise<FetchResult<DepsDevPackageData>> {
+  // Go module paths use slashes - deps.dev expects URL-encoded
+  return registryFetch<DepsDevPackageData>(
+    `https://api.deps.dev/v3alpha/systems/${encodeURIComponent(system)}/packages/${encodeURIComponent(name)}`
   );
 }
