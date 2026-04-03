@@ -231,7 +231,9 @@ function printReport(results, belowThreshold) {
     const score = r.health_score !== null ? String(r.health_score) : "—";
     const sc = scoreColor(r.health_score);
     const rc = riskColor(r.risk_level);
-    const fail = r.health_score !== null && r.health_score < threshold ? ` ${COLORS.red}FAIL${COLORS.reset}` : "";
+    const fail = r._ignored
+      ? ` ${COLORS.gray}IGNORED${COLORS.reset}`
+      : r.health_score !== null && r.health_score < threshold ? ` ${COLORS.red}FAIL${COLORS.reset}` : "";
 
     console.log(
       `  ${padRight(r.name, 30)} ${COLORS.gray}${padRight(r.version, 12)}${COLORS.reset} ${sc}${padRight(score, 8)}${COLORS.reset} ${rc}${r.risk_level}${COLORS.reset}${fail}`
@@ -253,6 +255,37 @@ function printReport(results, belowThreshold) {
   }
 }
 
+// ─── Allowlist ─────────────────────────────────────────────────────────────
+
+function loadAllowlist() {
+  // Try .dependency-obituary.yml, .dependency-obituary.json, or .depobituaryignore
+  const configFiles = [
+    ".dependency-obituary.json",
+    ".depobituaryignore",
+  ];
+
+  for (const file of configFiles) {
+    if (!fs.existsSync(file)) continue;
+
+    if (file.endsWith(".json")) {
+      try {
+        const config = JSON.parse(fs.readFileSync(file, "utf-8"));
+        return config.ignore || config.allowlist || [];
+      } catch { return []; }
+    }
+
+    // .depobituaryignore - one package per line (like .gitignore)
+    if (file === ".depobituaryignore") {
+      return fs.readFileSync(file, "utf-8")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith("#"));
+    }
+  }
+
+  return [];
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -268,6 +301,11 @@ async function main() {
     --threshold <n>    Minimum passing score (default: 60)
     --api-url <url>    API base URL (default: https://dependency-obituary.orelsec.com)
     -h, --help         Show this help
+
+  Allowlist:
+    Create .depobituaryignore (one package per line) or
+    .dependency-obituary.json ({"ignore": ["pkg1", "pkg2"]})
+    Supports wildcards: "github.com/Azure/*"
 
   Auto-detects: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile
 `);
@@ -301,11 +339,25 @@ async function main() {
     process.exit(1);
   }
 
+  // Load allowlist from .dependency-obituary.yml or .dependency-obituary.json
+  const allowlist = loadAllowlist();
+  if (allowlist.length > 0) {
+    console.log(`${COLORS.gray}  Allowlist: ${allowlist.length} package(s) ignored${COLORS.reset}`);
+  }
+
   // Sort by score ascending
   results.sort((a, b) => (a.health_score ?? -1) - (b.health_score ?? -1));
 
+  // Mark allowlisted packages
+  for (const r of results) {
+    r._ignored = allowlist.some((pattern) => {
+      if (pattern.endsWith("*")) return r.name.startsWith(pattern.slice(0, -1));
+      return r.name === pattern;
+    });
+  }
+
   const belowThreshold = results.filter(
-    (r) => r.health_score !== null && r.health_score < threshold
+    (r) => r.health_score !== null && r.health_score < threshold && !r._ignored
   );
 
   printReport(results, belowThreshold);

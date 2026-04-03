@@ -1,0 +1,15 @@
+# .depobituaryignore - packages to exclude from health check failures
+#
+# One package name per line. Supports wildcard suffix (*).
+# These packages will still be scored and shown in reports,
+# but won't cause CI to fail.
+#
+# Common reasons to ignore:
+# - Spec-complete libraries (UUID, JWT, compression)
+# - Transitive deps locked by upstream (can't replace)
+# - Go stdlib extensions (golang.org/x/*)
+#
+# Examples:
+# github.com/google/uuid
+# github.com/Azure/*
+# golang.org/x/*
