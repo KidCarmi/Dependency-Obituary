@@ -74,7 +74,8 @@ type FetchResult<T> =
 │   ├── scorer.ts      # Health Score -pure functions, null weight redistribution
 │   ├── cache.ts       # Upstash Redis wrapper, versioned keys (v2:dep:...)
 │   ├── github.ts      # GitHub API client (202 retry on contributors)
-│   ├── npm.ts         # npm / PyPI / crates.io / Go proxy / RubyGems clients
+│   ├── npm.ts         # npm / PyPI / crates.io / Go proxy / RubyGems / Packagist / Maven / pub.dev / vcpkg / deps.dev clients
+│   ├── github-app.ts  # GitHub App JWT auth, webhook helpers
 │   └── __tests__/     # Vitest test files
 ├── bin/
 │   └── check.js       # CLI tool: node bin/check.js [file] --threshold 60
@@ -101,7 +102,7 @@ type FetchResult<T> =
 
 ## Caching
 
-- Versioned cache keys: `v2:dep:{ecosystem}:{name}:{major_version}`
+- Versioned cache keys: `v7:dep:{ecosystem}:{name}:{major_version}`
 - Dynamic TTL: 72h (>1M dl/wk), 48h (100k–1M), 24h (10k–100k), 12h (<10k)
 - Never cache degraded results (`data_confidence: "unavailable"`)
 - Skip + delete stale degraded entries on read
@@ -151,7 +152,39 @@ AUTH_SECRET=...                         # Required if auth enabled
 | `parser.ts` | All formats: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile, composer.json, build.gradle, pubspec.yaml |
 | `cache.ts` | Test: HIT, MISS, versioned keys |
 
-Run: `npm run test` (144 tests passing)
+Run: `npm run test` (149 unit tests)
+Run: `npm run test:integration` (42 integration tests against production)
+
+---
+
+## Mature Package Detection
+
+`isMaturePackage()` detects "complete" packages using two paths:
+
+**Path 1 (download-aware):** Weekly downloads >= 10k + stable trend + few issues + 0 CVEs.
+Works for: npm, PyPI, Cargo, RubyGems, Packagist, Pub, vcpkg.
+
+**Path 2 (GitHub-only fallback):** Recent activity within 1 year (commit or release) + few issues + 0 CVEs.
+Works for: Maven, or when deps.dev/pub.dev is down.
+
+**Staleness guard:** No commits in 5+ years = not mature regardless of other signals.
+
+When mature, commit and release scores get a floor of 75.
+
+---
+
+## Deprecated & Archived Detection
+
+- **npm deprecated:** Check `deprecated` field on latest version. Shows "Deprecated" badge.
+- **GitHub archived:** Check `archived` flag on repo. Caps score at 70, shows "Archived" badge.
+- **has_issues guard:** If GitHub Issues disabled, `openIssues = null` (not 0).
+
+---
+
+## Allowlist (.depobituaryignore)
+
+CLI and CI support `.depobituaryignore` (one package per line) or `.dependency-obituary.json` (`{"ignore": [...]}`).
+Supports wildcards: `golang.org/x/*`. Ignored packages still scored but don't fail CI.
 
 ---
 

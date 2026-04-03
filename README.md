@@ -62,7 +62,9 @@ Every package gets a score from **0 (dead) to 100 (thriving)** based on public d
 
 When a signal has no data (e.g. GitHub rate-limited), its weight is redistributed to signals with real data - no unfair penalties for missing API data.
 
-**Mature package detection:** Packages like `left-pad` that are intentionally complete (high downloads, stable trend, few issues, no CVEs) get a maturity boost instead of being penalized for inactivity. Complete != abandoned.
+**Mature package detection:** Packages like `left-pad` that are intentionally complete (high downloads, stable trend, few issues, no CVEs) get a maturity boost instead of being penalized for inactivity. Complete != abandoned. Works across all 9 ecosystems using download data, deps.dev dependents, pub.dev popularity, or GitHub activity as fallback.
+
+**Deprecated & archived detection:** npm packages with the `deprecated` field show a warning. GitHub repos marked `archived` are capped at score 70 (can't receive security patches).
 
 ---
 
@@ -94,6 +96,28 @@ node bin/check.js --threshold 60
 
 # Explicit file + custom threshold
 node bin/check.js Cargo.toml --threshold 40
+```
+
+### Allowlist (ignore packages)
+
+Create `.depobituaryignore` in your project root to skip packages that are intentionally inactive:
+
+```
+# Spec-complete libraries
+github.com/google/uuid
+github.com/golang-jwt/jwt/v4
+
+# All Azure transitive deps
+github.com/Azure/*
+
+# Go stdlib extensions
+golang.org/x/*
+```
+
+Ignored packages are still scored and shown in reports, but don't fail CI. Also supports `.dependency-obituary.json`:
+
+```json
+{ "ignore": ["github.com/google/uuid", "golang.org/x/*"] }
 ```
 
 ### GitHub Action
@@ -132,16 +156,26 @@ curl -X POST https://dependency-obituary.orelsec.com/api/analyze \
   }'
 ```
 
-Supported ecosystems: `npm`, `pypi`, `cargo`, `go`, `rubygems`, `packagist`, `maven`, `pub`
+Supported ecosystems: `npm`, `pypi`, `cargo`, `go`, `rubygems`, `packagist`, `maven`, `pub`, `vcpkg`
 
 ---
+
+## GitHub App (auto PR comments)
+
+Install the bot to get automatic health reports on every PR that touches dependency files:
+
+**[Install GitHub App](https://github.com/apps/dependency-obituary-bot)**
+
+The bot comments with a score table, updates on each push, and logs activity to your dashboard.
 
 ## Monitoring (optional, requires sign-in)
 
 Sign in with GitHub to unlock:
 
 - **Watchlist** - save dependency lists and re-check them from a dashboard
+- **PR Activity Feed** - see every PR the bot analyzed across all repos
 - **Better scores** - per-user GitHub tokens mean no shared rate limits
+- **Bot settings** - configure thresholds and comment behavior
 
 Anonymous file analysis works without sign-in. Auth is purely opt-in.
 
@@ -149,7 +183,7 @@ Anonymous file analysis works without sign-in. Auth is purely opt-in.
 
 ## Self-host
 
-**Prerequisites:** Node.js 20+, [Upstash Redis](https://upstash.com) (free), [GitHub PAT](https://github.com/settings/tokens)
+**Prerequisites:** Node.js 22+, [Upstash Redis](https://upstash.com) (free), [GitHub PAT](https://github.com/settings/tokens)
 
 ```bash
 git clone https://github.com/KidCarmi/Dependency-Obituary
@@ -175,6 +209,8 @@ npm run dev
 | Cache | Upstash Redis | Free (10k cmds/day) |
 | Package data | npm / PyPI / crates.io / Go proxy / RubyGems / Packagist / Maven / pub.dev | Free |
 | VCS data | GitHub REST API v3 | Free (5k req/hr) |
+| Popularity | deps.dev (Go), pub.dev score, Repology (C++) | Free |
+| Security CI | CodeQL SAST, Gitleaks, OWASP ZAP DAST | Free |
 | **Total** | | **$0/month** |
 
 ---
@@ -187,10 +223,10 @@ Browser                              Server
   |  [1] Parse file client-side        |
   |  [2] POST {ecosystem, packages}    |
   |  --------------------------------> |
-  |                                    |  [3] Check Redis cache (v2: keys)
-  |                                    |  [4] Fetch registry + GitHub (batched, concurrent)
-  |                                    |  [5] Score with null weight redistribution
-  |                                    |  [6] Cache non-degraded results
+  |                                    |  [3] Check Redis cache (v7: keys)
+  |                                    |  [4] Fetch registry + GitHub + deps.dev (batched, concurrent)
+  |                                    |  [5] Score with null weight redistribution + mature detection
+  |                                    |  [6] Cache non-degraded results (12-72h TTL)
   |  <-------------------------------- |
   |  [7] Render dashboard + breakdown  |
 ```
@@ -201,7 +237,7 @@ Browser                              Server
 - Null signal weights redistributed to signals with real data
 - Never caches degraded results - stale entries auto-deleted on read
 - Versioned cache keys (`v2:dep:...`) for algorithm changes
-- 131 tests passing (scorer at 100% coverage)
+- 191 tests (149 unit + 42 integration across all 9 ecosystems)
 
 ---
 
@@ -209,7 +245,8 @@ Browser                              Server
 
 ```bash
 npm run dev          # Start dev server
-npm run test         # Run 131 tests
+npm run test         # Run 149 unit tests
+npm run test:integration  # Run 42 integration tests against production
 npm run type-check   # TypeScript strict check
 npm run build        # Production build
 ```
