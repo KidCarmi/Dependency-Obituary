@@ -258,11 +258,18 @@ export async function fetchCratesIoDownloads(
 
 // ─── Go Module Proxy Endpoints ─────────────────────────────────────────────
 
+// Go module proxy requires lowercase paths with !uppercase encoding
+// e.g. "github.com/Azure/go-ntlmssp" -> "github.com/!azure/go-ntlmssp"
+function encodeGoModulePath(modulePath: string): string {
+  return modulePath.replace(/[A-Z]/g, (c) => `!${c.toLowerCase()}`);
+}
+
 export async function fetchGoModule(
   modulePath: string
 ): Promise<FetchResult<GoModuleData>> {
+  const encoded = encodeGoModulePath(modulePath);
   return registryFetch<GoModuleData>(
-    `https://proxy.golang.org/${encodeURIComponent(modulePath)}/@latest`
+    `https://proxy.golang.org/${encoded}/@latest`
   );
 }
 
