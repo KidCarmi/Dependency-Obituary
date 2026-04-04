@@ -292,7 +292,7 @@ export function parseVcpkgJson(content: string): Package[] {
 
 // ─── package-lock.json Parser (npm - with direct/transitive detection) ──────
 
-export function parsePackageLockJson(content: string, packageJsonContent?: string): Package[] {
+export function parsePackageLockJson(content: string): Package[] {
   try {
     const lock: unknown = JSON.parse(content);
     if (typeof lock !== "object" || lock === null) return [];
@@ -300,24 +300,26 @@ export function parsePackageLockJson(content: string, packageJsonContent?: strin
     const lockObj = lock as Record<string, unknown>;
     const packages: Package[] = [];
 
-    // Determine which packages are direct deps from package.json
+    // Extract direct deps from lock file's root entry (v2/v3)
+    // The "" key contains the project's own dependencies/devDependencies
     const directDeps = new Set<string>();
-    if (packageJsonContent) {
-      try {
-        const pkgJson = JSON.parse(packageJsonContent) as Record<string, unknown>;
-        for (const field of ["dependencies", "devDependencies"] as const) {
-          const deps = pkgJson[field];
+    const pkgs = lockObj.packages;
+    if (typeof pkgs === "object" && pkgs !== null) {
+      const rootEntry = (pkgs as Record<string, unknown>)[""];
+      if (typeof rootEntry === "object" && rootEntry !== null) {
+        const root = rootEntry as Record<string, unknown>;
+        for (const field of ["dependencies", "devDependencies", "optionalDependencies"] as const) {
+          const deps = root[field];
           if (typeof deps === "object" && deps !== null) {
             for (const name of Object.keys(deps as Record<string, unknown>)) {
               directDeps.add(name);
             }
           }
         }
-      } catch { /* ignore parse errors */ }
+      }
     }
 
     // package-lock.json v2/v3 uses "packages" with path keys
-    const pkgs = lockObj.packages;
     if (typeof pkgs === "object" && pkgs !== null) {
       for (const [path, info] of Object.entries(pkgs as Record<string, unknown>)) {
         if (!path || path === "") continue; // skip root entry
@@ -369,8 +371,7 @@ export function parsePackageLockJson(content: string, packageJsonContent?: strin
 
 export function parseFile(
   filename: string,
-  content: string,
-  auxiliaryContent?: string
+  content: string
 ): { ecosystem: Ecosystem; packages: Package[] } {
   const lower = filename.toLowerCase();
 
@@ -379,7 +380,7 @@ export function parseFile(
   }
 
   if (lower === "package-lock.json" || lower.endsWith("/package-lock.json")) {
-    return { ecosystem: "npm", packages: parsePackageLockJson(content, auxiliaryContent) };
+    return { ecosystem: "npm", packages: parsePackageLockJson(content) };
   }
 
   if (

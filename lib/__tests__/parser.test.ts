@@ -437,21 +437,22 @@ dev_dependencies:
 // ─── parsePackageLockJson ────────────────────────────────────────────────────
 
 describe("parsePackageLockJson", () => {
-  it("parses v2/v3 lock file with direct/transitive detection", () => {
+  it("detects direct vs transitive from lock file root entry (v3)", () => {
     const lockContent = JSON.stringify({
       lockfileVersion: 3,
       packages: {
-        "": { name: "my-app", version: "1.0.0" },
+        "": {
+          name: "my-app",
+          version: "1.0.0",
+          dependencies: { express: "^4.18.2" },
+        },
         "node_modules/express": { version: "4.18.2" },
         "node_modules/body-parser": { version: "1.20.2" },
         "node_modules/express/node_modules/debug": { version: "2.6.9" },
       },
     });
-    const pkgJsonContent = JSON.stringify({
-      dependencies: { express: "^4.18.2" },
-    });
 
-    const result = parsePackageLockJson(lockContent, pkgJsonContent);
+    const result = parsePackageLockJson(lockContent);
     expect(result).toHaveLength(3);
 
     const express = result.find((p) => p.name === "express");
@@ -465,7 +466,7 @@ describe("parsePackageLockJson", () => {
     expect(debug?.dependedBy).toBe("express");
   });
 
-  it("parses without package.json (no direct/transitive info)", () => {
+  it("handles root entry without deps (all packages unknown)", () => {
     const lockContent = JSON.stringify({
       lockfileVersion: 3,
       packages: {
