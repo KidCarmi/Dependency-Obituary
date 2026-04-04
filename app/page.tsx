@@ -24,6 +24,7 @@ const ECOSYSTEMS = [
   { name: "Java", file: "build.gradle", color: "text-amber-400" },
   { name: "Dart", file: "pubspec.yaml", color: "text-sky-400" },
   { name: "C++", file: "vcpkg.json", color: "text-pink-400" },
+  { name: "Lock files", file: "package-lock.json", color: "text-gray-400" },
 ];
 
 const STEPS = [

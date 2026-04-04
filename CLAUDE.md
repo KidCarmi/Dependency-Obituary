@@ -102,7 +102,7 @@ type FetchResult<T> =
 
 ## Caching
 
-- Versioned cache keys: `v13:dep:{ecosystem}:{name}:{major_version}`
+- Versioned cache keys: `v14:dep:{ecosystem}:{name}:{major_version}`
 - Dynamic TTL: 72h (>1M dl/wk), 48h (100k–1M), 24h (10k–100k), 12h (<10k)
 - Never cache degraded results (`data_confidence: "unavailable"`)
 - Skip + delete stale degraded entries on read
@@ -162,7 +162,7 @@ Run: `npm run test:integration` (42 integration tests against production)
 - **Go packages without `github.com/` paths** (e.g. `gopkg.in/`, `golang.org/`) get `data_confidence: "low"` - no GitHub signals available
 - **Maven has no download API** - maturity detection uses GitHub-only fallback
 - **GitHub `open_issues_count` includes PRs** - threshold set to 200 to accommodate popular repos
-- **Transitive deps not labeled yet** - all packages treated equally (v3.0 will add lock file parsing)
+- **Transitive dep detection** - npm `package-lock.json` supported (direct vs transitive from root entry). Other lock files planned.
 
 ---
 
