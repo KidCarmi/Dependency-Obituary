@@ -55,7 +55,12 @@ function parseAndValidateBody(body: unknown): ValidatedInput | string {
   const packages: Package[] = [];
   for (const item of obj.packages) {
     if (!isValidPackage(item)) return "Each package must have a valid name and version";
-    packages.push({ name: String(item.name), version: String(item.version) });
+    packages.push({
+      name: String(item.name),
+      version: String(item.version),
+      isDirect: typeof item.isDirect === "boolean" ? item.isDirect : undefined,
+      dependedBy: typeof item.dependedBy === "string" ? item.dependedBy : undefined,
+    });
   }
 
   return { ecosystem: obj.ecosystem as Ecosystem, packages };
