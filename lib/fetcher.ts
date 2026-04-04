@@ -116,6 +116,8 @@ function buildDegradedResult(
     retry_after: retryAfter,
     github_url: null,
     npm_url: npmUrl ?? null,
+    is_direct: pkg.isDirect,
+    depended_by: pkg.dependedBy,
   };
 }
 
@@ -756,6 +758,9 @@ export async function fetchBatched(
           if (cachedResult.data_confidence === "unavailable") {
             await redis.del(cacheKey).catch(() => {});
           } else {
+            // Overlay per-project transitive info (not part of cached data)
+            cachedResult.is_direct = pkg.isDirect;
+            cachedResult.depended_by = pkg.dependedBy;
             return { result: cachedResult, rateLimit: null };
           }
         }
