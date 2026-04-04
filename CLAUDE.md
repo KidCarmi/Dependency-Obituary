@@ -152,8 +152,17 @@ AUTH_SECRET=...                         # Required if auth enabled
 | `parser.ts` | All formats: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile, composer.json, build.gradle, pubspec.yaml |
 | `cache.ts` | Test: HIT, MISS, versioned keys |
 
-Run: `npm run test` (149 unit tests)
+Run: `npm run test` (152 unit tests)
 Run: `npm run test:integration` (42 integration tests against production)
+
+---
+
+## Known Limitations
+
+- **Go packages without `github.com/` paths** (e.g. `gopkg.in/`, `golang.org/`) get `data_confidence: "low"` - no GitHub signals available
+- **Maven has no download API** - maturity detection uses GitHub-only fallback
+- **GitHub `open_issues_count` includes PRs** - threshold set to 200 to accommodate popular repos
+- **Transitive deps not labeled yet** - all packages treated equally (v3.0 will add lock file parsing)
 
 ---
 

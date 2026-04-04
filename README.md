@@ -237,7 +237,8 @@ Browser                              Server
 - Null signal weights redistributed to signals with real data
 - Never caches degraded results - stale entries auto-deleted on read
 - Versioned cache keys (`v2:dep:...`) for algorithm changes
-- 191 tests (149 unit + 42 integration across all 9 ecosystems)
+- 194 tests (152 unit + 42 integration across all 9 ecosystems)
+- Zero fabricated data - all popularity signals are real (downloads, deps.dev versions, Repology distros, pub.dev scores)
 
 ---
 
@@ -245,7 +246,7 @@ Browser                              Server
 
 ```bash
 npm run dev          # Start dev server
-npm run test         # Run 149 unit tests
+npm run test         # Run 152 unit tests
 npm run test:integration  # Run 42 integration tests against production
 npm run type-check   # TypeScript strict check
 npm run build        # Production build
