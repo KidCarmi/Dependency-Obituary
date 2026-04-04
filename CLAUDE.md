@@ -102,7 +102,7 @@ type FetchResult<T> =
 
 ## Caching
 
-- Versioned cache keys: `v7:dep:{ecosystem}:{name}:{major_version}`
+- Versioned cache keys: `v8:dep:{ecosystem}:{name}:{major_version}`
 - Dynamic TTL: 72h (>1M dl/wk), 48h (100k–1M), 24h (10k–100k), 12h (<10k)
 - Never cache degraded results (`data_confidence: "unavailable"`)
 - Skip + delete stale degraded entries on read
