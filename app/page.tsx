@@ -288,7 +288,11 @@ export default function HomePage(): React.ReactElement {
           </p>
 
           {/* Parsed State */}
-          {state.step === "parsed" && (
+          {state.step === "parsed" && (() => {
+            const directCount = state.packages.filter((p) => p.isDirect === true).length;
+            const transitiveCount = state.packages.filter((p) => p.isDirect === false).length;
+            const hasTransitiveInfo = directCount > 0 || transitiveCount > 0;
+            return (
             <div className="mt-8 space-y-4">
               <p className="text-gray-300">
                 Found{" "}
@@ -296,6 +300,11 @@ export default function HomePage(): React.ReactElement {
                   {state.packages.length}
                 </span>{" "}
                 {state.ecosystem} dependencies
+                {hasTransitiveInfo && (
+                  <span className="text-gray-500 text-sm ml-1">
+                    ({directCount} direct, {transitiveCount} transitive)
+                  </span>
+                )}
               </p>
               <button
                 onClick={handleAnalyze}
@@ -304,7 +313,8 @@ export default function HomePage(): React.ReactElement {
                 Analyze Health
               </button>
             </div>
-          )}
+            );
+          })()}
 
           {/* Loading State */}
           {state.step === "loading" && (

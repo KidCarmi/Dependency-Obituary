@@ -138,8 +138,16 @@ export default function ResultsDashboard({ data }: Props): React.ReactElement {
         <div>
           <h1 className="text-2xl font-bold mb-1">Health Report</h1>
           <p className="text-sm text-gray-500">
-            Analyzed {data.results.length} packages &middot;{" "}
-            {Math.round(data.meta.cache_hit_rate * 100)}% cache hits
+            Analyzed {data.results.length} packages
+            {(() => {
+              const direct = data.results.filter((r) => r.is_direct === true).length;
+              const transitive = data.results.filter((r) => r.is_direct === false).length;
+              if (direct > 0 || transitive > 0) {
+                return <> ({direct} direct, {transitive} transitive)</>;
+              }
+              return null;
+            })()}
+            {" "}&middot; {Math.round(data.meta.cache_hit_rate * 100)}% cache hits
             {data.meta.degraded_count > 0 && (
               <span className="text-yellow-500">
                 {" "}&middot; {data.meta.degraded_count} unavailable
