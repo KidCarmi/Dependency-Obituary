@@ -295,7 +295,12 @@ function ResultRow({
         <td className="p-3 font-medium">
           {result.name}
           {result.is_direct === false && (
-            <span className="ml-2 text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded">
+            <span
+              className="ml-2 text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded"
+              title={result.depended_by
+                ? `Indirect dependency pulled in by ${result.depended_by}`
+                : "Indirect dependency — not listed in your package.json"}
+            >
               transitive{result.depended_by ? ` of ${result.depended_by}` : ""}
             </span>
           )}
