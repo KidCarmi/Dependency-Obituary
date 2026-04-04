@@ -102,7 +102,7 @@ type FetchResult<T> =
 
 ## Caching
 
-- Versioned cache keys: `v8:dep:{ecosystem}:{name}:{major_version}`
+- Versioned cache keys: `v13:dep:{ecosystem}:{name}:{major_version}`
 - Dynamic TTL: 72h (>1M dl/wk), 48h (100k–1M), 24h (10k–100k), 12h (<10k)
 - Never cache degraded results (`data_confidence: "unavailable"`)
 - Skip + delete stale degraded entries on read
@@ -161,15 +161,23 @@ Run: `npm run test:integration` (42 integration tests against production)
 
 `isMaturePackage()` detects "complete" packages using two paths:
 
-**Path 1 (download-aware):** Weekly downloads >= 10k + stable trend + few issues + 0 CVEs.
-Works for: npm, PyPI, Cargo, RubyGems, Packagist, Pub, vcpkg.
+**Path 1 (real downloads):** Weekly downloads >= 10k + stable trend + 0 CVEs.
+Works for: npm, PyPI, Cargo, RubyGems, Packagist.
 
-**Path 2 (GitHub-only fallback):** Recent activity within 1 year (commit or release) + few issues + 0 CVEs.
-Works for: Maven, or when deps.dev/pub.dev is down.
+**Path 2 (deps.dev):** Version count >= 20 on deps.dev. Works for: Go.
 
+**Path 3 (Repology):** Distro count >= 10. Works for: vcpkg/C++.
+
+**Path 4 (pub.dev):** Popularity score >= 0.7. Works for: Dart/Flutter.
+
+**Path 5 (GitHub-only fallback):** Recent activity within 2 years + 0 CVEs.
+Works for: Maven, or when all other signals are unavailable.
+
+**Hard gates (all paths):** CVEs > 0 = not mature. Open issues > 200 = not mature.
 **Staleness guard:** No commits in 5+ years = not mature regardless of other signals.
 
 When mature, commit and release scores get a floor of 75.
+All popularity signals are REAL data - no fabricated download numbers.
 
 ---
 

@@ -62,7 +62,7 @@ Every package gets a score from **0 (dead) to 100 (thriving)** based on public d
 
 When a signal has no data (e.g. GitHub rate-limited), its weight is redistributed to signals with real data - no unfair penalties for missing API data.
 
-**Mature package detection:** Packages like `left-pad` that are intentionally complete (high downloads, stable trend, few issues, no CVEs) get a maturity boost instead of being penalized for inactivity. Complete != abandoned. Works across all 9 ecosystems using download data, deps.dev dependents, pub.dev popularity, or GitHub activity as fallback.
+**Mature package detection:** Packages like `left-pad` that are intentionally complete get a maturity boost instead of being penalized for inactivity. Complete != abandoned. Uses real signals per ecosystem - download data (npm/PyPI/Cargo), deps.dev version count (Go), Repology distro count (C++), pub.dev popularity (Dart), or GitHub activity fallback (Maven). Zero fabricated data.
 
 **Deprecated & archived detection:** npm packages with the `deprecated` field show a warning. GitHub repos marked `archived` are capped at score 70 (can't receive security patches).
 
