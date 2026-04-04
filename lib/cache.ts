@@ -28,7 +28,7 @@ export function buildCacheKey(
 ): string {
   const majorVersion = version.split(".")[0] || "0";
   // v9: mature detection issue threshold fix (15 -> 50) — invalidates v4 cache
-  return `v9:dep:${ecosystem}:${name}:${majorVersion}`;
+  return `v10:dep:${ecosystem}:${name}:${majorVersion}`;
 }
 
 // ─── Dynamic TTL by Popularity ──────────────────────────────────────────────

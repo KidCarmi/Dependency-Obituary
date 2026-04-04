@@ -433,13 +433,21 @@ async function fetchPackageHealth(
         );
       }
 
-      // deps.dev: use version count as dependent popularity proxy
-      if (depsDevResult.success && depsDevResult.data.versions) {
-        const versionCount = depsDevResult.data.versions.length;
-        // More versions = more established package
-        if (versionCount >= 50) registryData.weeklyDownloads = 100000;
-        else if (versionCount >= 20) registryData.weeklyDownloads = 50000;
-        else if (versionCount >= 5) registryData.weeklyDownloads = 10000;
+      // deps.dev: if the package exists in Google's database, it's established
+      // The /packages/ endpoint returns package metadata (versions require separate call)
+      if (depsDevResult.success) {
+        // Package exists in deps.dev = established in the Go ecosystem
+        // Use version count if available, otherwise assume established
+        const versions = depsDevResult.data.versions;
+        if (versions && Array.isArray(versions)) {
+          const versionCount = versions.length;
+          if (versionCount >= 50) registryData.weeklyDownloads = 100000;
+          else if (versionCount >= 20) registryData.weeklyDownloads = 50000;
+          else registryData.weeklyDownloads = 10000;
+        } else {
+          // Package exists but no version array - still established
+          registryData.weeklyDownloads = 50000;
+        }
       }
     } else if (ecosystem === "rubygems") {
       const [gemResult, versionsResult] = await Promise.all([

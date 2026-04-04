@@ -178,8 +178,8 @@ export function isMaturePackage(signals: PackageSignals): boolean {
   // recent activity (proves someone is maintaining it)
   if (signals.weeklyDownloads === null) {
     const hasRecentActivity =
-      (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit <= 365) ||
-      (signals.daysSinceLastRelease !== null && signals.daysSinceLastRelease <= 365);
+      (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit <= 730) ||
+      (signals.daysSinceLastRelease !== null && signals.daysSinceLastRelease <= 730);
     return hasRecentActivity;
   }
 
