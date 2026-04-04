@@ -24,6 +24,7 @@ const BOT_MARKER = "<!-- dependency-obituary-bot -->";
 
 const DEP_FILES = new Set([
   "package.json",
+  "package-lock.json",
   "requirements.txt",
   "cargo.toml",
   "go.mod",

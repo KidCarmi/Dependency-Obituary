@@ -37,6 +37,7 @@ const fileArg = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1
 // ─── File Detection ────────────────────────────────────────────────────────
 
 const KNOWN_FILES = [
+  "package-lock.json",
   "package.json",
   "requirements.txt",
   "Cargo.toml",
@@ -60,6 +61,7 @@ function findDepFile(explicit) {
 
 function detectEcosystem(filename) {
   const lower = filename.toLowerCase();
+  if (lower.includes("package-lock.json")) return "npm";
   if (lower.includes("package.json")) return "npm";
   if (lower.includes("requirements")) return "pypi";
   if (lower.includes("cargo.toml")) return "cargo";
@@ -144,7 +146,48 @@ function parseGemfile(content) {
   return pkgs;
 }
 
+function parsePackageLockJson(content) {
+  try {
+    const lock = JSON.parse(content);
+    const pkgs = [];
+    const directDeps = new Set();
+    const packages = lock.packages;
+    if (packages && typeof packages === "object") {
+      const root = packages[""];
+      if (root && typeof root === "object") {
+        for (const field of ["dependencies", "devDependencies", "optionalDependencies"]) {
+          const deps = root[field];
+          if (deps && typeof deps === "object") {
+            for (const name of Object.keys(deps)) directDeps.add(name);
+          }
+        }
+      }
+      for (const [p, info] of Object.entries(packages)) {
+        if (!p || p === "") continue;
+        if (!info || typeof info !== "object") continue;
+        const version = typeof info.version === "string" ? info.version : "0.0.0";
+        const name = p.replace(/^node_modules\//, "").replace(/.*node_modules\//, "");
+        if (!name || name.includes("node_modules")) continue;
+        const isDirect = directDeps.size > 0 ? directDeps.has(name) : undefined;
+        let dependedBy;
+        if (isDirect === false && directDeps.size > 0) {
+          const parts = p.split("node_modules/");
+          if (parts.length >= 3) dependedBy = parts[1].replace(/\/$/, "");
+        }
+        pkgs.push({ name, version, isDirect, dependedBy });
+      }
+    }
+    return pkgs;
+  } catch {
+    return [];
+  }
+}
+
 function parseFile(filename, content) {
+  const lower = filename.toLowerCase();
+  if (lower.includes("package-lock.json")) {
+    return { ecosystem: "npm", packages: parsePackageLockJson(content) };
+  }
   const eco = detectEcosystem(filename);
   const parsers = { npm: parsePackageJson, pypi: parseRequirementsTxt, cargo: parseCargoToml, go: parseGoMod, rubygems: parseGemfile };
   return { ecosystem: eco, packages: (parsers[eco] || parsePackageJson)(content) };
@@ -309,7 +352,7 @@ async function main() {
     .dependency-obituary.json ({"ignore": ["pkg1", "pkg2"]})
     Supports wildcards: "github.com/Azure/*"
 
-  Auto-detects: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile
+  Auto-detects: package-lock.json, package.json, requirements.txt, Cargo.toml, go.mod, Gemfile
 `);
     process.exit(0);
   }
