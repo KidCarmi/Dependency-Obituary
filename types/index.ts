@@ -35,6 +35,10 @@ export interface PackageSignals {
   weeklyDownloads12wAgo: number | null;
   hasMultipleMaintainers: boolean | null;
   unresolvedCves: number;
+  // Alternative popularity signals (real data, not fabricated)
+  depsDevVersionCount: number | null;    // deps.dev: how many versions published
+  repologyDistroCount: number | null;    // repology: how many distros package it
+  pubPopularityScore: number | null;     // pub.dev: 0-1 popularity percentile
 }
 
 export type RiskLevel =

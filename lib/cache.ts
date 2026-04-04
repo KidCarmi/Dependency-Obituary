@@ -27,8 +27,8 @@ export function buildCacheKey(
   version: string
 ): string {
   const majorVersion = version.split(".")[0] || "0";
-  // v11: force fresh - deps.dev fallback fix
-  return `v11:dep:${ecosystem}:${name}:${majorVersion}`;
+  // v12: zero mock data - real signals only
+  return `v12:dep:${ecosystem}:${name}:${majorVersion}`;
 }
 
 // ─── Dynamic TTL by Popularity ──────────────────────────────────────────────

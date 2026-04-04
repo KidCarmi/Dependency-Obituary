@@ -158,9 +158,8 @@ export function isMaturePackage(signals: PackageSignals): boolean {
   // Staleness guard: no commits in 5+ years = not audited, not mature
   if (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit > 1825) return false;
 
-  // ── Path 1: Download-aware (npm, PyPI, Cargo, RubyGems, Packagist, Pub, vcpkg) ──
+  // ── Path 1: Real download data (npm, PyPI, Cargo, RubyGems, Packagist) ──
   if (signals.weeklyDownloads !== null && signals.weeklyDownloads >= 10000) {
-    // Download trend must be stable or growing
     if (
       signals.weeklyDownloads12wAgo !== null &&
       signals.weeklyDownloads12wAgo > 0
@@ -173,10 +172,21 @@ export function isMaturePackage(signals: PackageSignals): boolean {
     return true;
   }
 
-  // ── Path 2: GitHub-only fallback (Maven, or when deps.dev/pub.dev is down) ──
-  // A package with no download data can still be mature if it shows
-  // recent activity (proves someone is maintaining it)
-  if (signals.weeklyDownloads === null) {
+  // ── Path 2: Alternative popularity signals (no fake data) ──
+  // deps.dev version count: 20+ versions = established package
+  if (signals.depsDevVersionCount !== null && signals.depsDevVersionCount >= 20) return true;
+  // Repology distro count: 10+ distros = widely adopted
+  if (signals.repologyDistroCount !== null && signals.repologyDistroCount >= 10) return true;
+  // pub.dev popularity: top 30% = established
+  if (signals.pubPopularityScore !== null && signals.pubPopularityScore >= 0.7) return true;
+
+  // ── Path 3: GitHub-only fallback (Maven, or when all else fails) ──
+  if (
+    signals.weeklyDownloads === null &&
+    signals.depsDevVersionCount === null &&
+    signals.repologyDistroCount === null &&
+    signals.pubPopularityScore === null
+  ) {
     const hasRecentActivity =
       (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit <= 730) ||
       (signals.daysSinceLastRelease !== null && signals.daysSinceLastRelease <= 730);

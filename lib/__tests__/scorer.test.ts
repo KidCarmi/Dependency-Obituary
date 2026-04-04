@@ -364,6 +364,9 @@ describe("scorePackage", () => {
     weeklyDownloads12wAgo: 1500000,
     hasMultipleMaintainers: true,
     unresolvedCves: 0,
+    depsDevVersionCount: null,
+    repologyDistroCount: null,
+    pubPopularityScore: null,
   };
 
   it("scores a healthy package correctly", () => {
@@ -383,6 +386,9 @@ describe("scorePackage", () => {
     weeklyDownloads12wAgo: 5000,
     hasMultipleMaintainers: false,
     unresolvedCves: 5,
+    depsDevVersionCount: null,
+    repologyDistroCount: null,
+    pubPopularityScore: null,
   };
 
   it("scores an abandoned package correctly", () => {
@@ -428,6 +434,9 @@ describe("scorePackage", () => {
       weeklyDownloads12wAgo: null,
       hasMultipleMaintainers: null,
       unresolvedCves: 0,
+      depsDevVersionCount: null,
+      repologyDistroCount: null,
+      pubPopularityScore: null,
     };
 
     const result = scorePackage(allNull);
@@ -448,7 +457,7 @@ describe("scorePackage", () => {
 // ─── Mature Package Detection ───────────────────────────────────────────────
 
 describe("isMaturePackage", () => {
-  it("detects google/uuid as mature (high downloads, 0 CVEs, few issues)", () => {
+  it("detects google/uuid via deps.dev version count (no fake downloads)", () => {
     const signals: PackageSignals = {
       daysSinceLastCommit: 505,
       daysSinceLastRelease: 801,
@@ -456,15 +465,56 @@ describe("isMaturePackage", () => {
       closedIssues: null,
       contributorCount90d: null,
       prMergeVelocityDays: 5.8,
-      weeklyDownloads: 100000,
+      weeklyDownloads: null,           // Go has NO real download data
       weeklyDownloads12wAgo: null,
       hasMultipleMaintainers: null,
       unresolvedCves: 0,
+      depsDevVersionCount: 116,        // REAL: 116 versions on deps.dev
+      repologyDistroCount: null,
+      pubPopularityScore: null,
     };
     expect(isMaturePackage(signals)).toBe(true);
     const scored = scorePackage(signals);
-    expect(scored.breakdown.commitScore).toBe(75); // boosted from 0
-    expect(scored.breakdown.releaseScore).toBe(75); // boosted from 0
+    expect(scored.breakdown.commitScore).toBe(75);
+    expect(scored.breakdown.releaseScore).toBe(75);
     expect(scored.healthScore).toBeGreaterThanOrEqual(70);
+  });
+
+  it("detects mature via real downloads (npm)", () => {
+    const signals: PackageSignals = {
+      daysSinceLastCommit: 400,
+      daysSinceLastRelease: 500,
+      openIssues: 3,
+      closedIssues: null,
+      contributorCount90d: null,
+      prMergeVelocityDays: null,
+      weeklyDownloads: 5000000,        // REAL npm download data
+      weeklyDownloads12wAgo: 4800000,
+      hasMultipleMaintainers: true,
+      unresolvedCves: 0,
+      depsDevVersionCount: null,
+      repologyDistroCount: null,
+      pubPopularityScore: null,
+    };
+    expect(isMaturePackage(signals)).toBe(true);
+  });
+
+  it("rejects package with CVEs regardless of popularity", () => {
+    const signals: PackageSignals = {
+      daysSinceLastCommit: 30,
+      daysSinceLastRelease: 60,
+      openIssues: 2,
+      closedIssues: null,
+      contributorCount90d: 5,
+      prMergeVelocityDays: 3,
+      weeklyDownloads: 1000000,
+      weeklyDownloads12wAgo: null,
+      hasMultipleMaintainers: true,
+      unresolvedCves: 2,               // HAS CVEs
+      depsDevVersionCount: null,
+      repologyDistroCount: null,
+      pubPopularityScore: null,
+    };
+    expect(isMaturePackage(signals)).toBe(false);
   });
 });

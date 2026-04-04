@@ -220,6 +220,9 @@ function buildSignals(
     weeklyDownloads12wAgo: registry.weeklyDownloads12wAgo,
     hasMultipleMaintainers: registry.hasMultipleMaintainers,
     unresolvedCves,
+    depsDevVersionCount: null,
+    repologyDistroCount: null,
+    pubPopularityScore: null,
   };
 }
 
@@ -273,6 +276,9 @@ async function fetchPackageHealth(
       isDeprecated: false,
     };
     let npmUrl: string | null = null;
+    let depsDevVersionCount: number | null = null;
+    let repologyDistroCount: number | null = null;
+    let pubPopularityScore: number | null = null;
 
     if (ecosystem === "npm") {
       const [pkgResult, dlResult, dl12wResult] = await Promise.all([
@@ -433,20 +439,14 @@ async function fetchPackageHealth(
         );
       }
 
-      // deps.dev: if the package exists in Google's database, it's established
-      // The /packages/ endpoint returns package metadata (versions require separate call)
+      // deps.dev: store REAL version count (no fabricated download numbers)
       if (depsDevResult.success) {
-        // Package exists in deps.dev = established in the Go ecosystem
-        // Use version count if available, otherwise assume established
         const versions = depsDevResult.data.versions;
         if (versions && Array.isArray(versions)) {
-          const versionCount = versions.length;
-          if (versionCount >= 50) registryData.weeklyDownloads = 100000;
-          else if (versionCount >= 20) registryData.weeklyDownloads = 50000;
-          else registryData.weeklyDownloads = 10000;
+          depsDevVersionCount = versions.length;
         } else {
-          // Package exists but no version array - still established
-          registryData.weeklyDownloads = 50000;
+          // Package exists on deps.dev but no version array returned
+          depsDevVersionCount = 1;
         }
       }
     } else if (ecosystem === "rubygems") {
@@ -575,7 +575,8 @@ async function fetchPackageHealth(
 
       // pub.dev score: popularityScore as download proxy
       if (scoreResult.success) {
-        registryData.weeklyDownloads = Math.round(scoreResult.data.popularityScore * 1000000);
+        // Store REAL popularity score (no fabricated download numbers)
+        pubPopularityScore = scoreResult.data.popularityScore;
       }
     } else if (ecosystem === "vcpkg") {
       const [portResult, versionsResult, repologyResult] = await Promise.all([
@@ -615,18 +616,8 @@ async function fetchPackageHealth(
 
       // Repology: count how many distros/repos package this library
       if (repologyResult.success) {
-        const distroCount = repologyResult.data.length;
-        // Use distro count as popularity proxy for downloads
-        // 50+ repos = very popular, 10+ = popular, <10 = niche
-        if (distroCount >= 50) {
-          registryData.weeklyDownloads = 1000000; // proxy: very popular
-        } else if (distroCount >= 20) {
-          registryData.weeklyDownloads = 100000;
-        } else if (distroCount >= 5) {
-          registryData.weeklyDownloads = 10000;
-        } else {
-          registryData.weeklyDownloads = 1000;
-        }
+        // Store REAL distro count (no fabricated download numbers)
+        repologyDistroCount = repologyResult.data.length;
       }
     }
 
@@ -676,6 +667,10 @@ async function fetchPackageHealth(
 
     // Step 3: Build signals and score
     const signals = buildSignals(githubData, registryData);
+    // Inject real popularity signals (not fabricated downloads)
+    signals.depsDevVersionCount = depsDevVersionCount;
+    signals.repologyDistroCount = repologyDistroCount;
+    signals.pubPopularityScore = pubPopularityScore;
     const scored = scorePackage(signals);
     const isArchived = githubData.metadata?.archived ?? false;
 
