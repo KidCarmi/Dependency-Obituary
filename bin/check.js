@@ -238,7 +238,7 @@ function printReport(results, belowThreshold) {
       : r.health_score !== null && r.health_score < threshold ? ` ${COLORS.red}FAIL${COLORS.reset}` : "";
 
     console.log(
-      `  ${padRight(r.name, 30)} ${COLORS.gray}${padRight(r.version, 12)}${COLORS.reset} ${sc}${padRight(score, 8)}${COLORS.reset} ${rc}${RISK_DISPLAY[r.risk_level] || r.risk_level}${COLORS.reset}${fail}`
+      `  ${padRight(r.name, 30)} ${COLORS.gray}${padRight(r.version, 12)}${COLORS.reset} ${sc}${padRight(score, 8)}${COLORS.reset} ${rc}${RISK_DISPLAY[r.risk_level] || r.risk_level}${COLORS.reset}${r.is_direct === false ? ` ${COLORS.gray}(transitive${r.depended_by ? ` of ${r.depended_by}` : ""})${COLORS.reset}` : ""}${fail}`
     );
   }
 

@@ -20,6 +20,8 @@ export type Ecosystem = "npm" | "pypi" | "cargo" | "go" | "rubygems" | "packagis
 export interface Package {
   name: string;
   version: string;
+  isDirect?: boolean;
+  dependedBy?: string; // which direct dep pulls this in
 }
 
 // ─── Scoring Types ───────────────────────────────────────────────────────────
@@ -134,6 +136,8 @@ export interface HealthResult {
   score_breakdown?: ScoreBreakdownResponse;
   github_url: string | null;
   npm_url: string | null;
+  is_direct?: boolean;
+  depended_by?: string;
 }
 
 // ─── API Contract ────────────────────────────────────────────────────────────

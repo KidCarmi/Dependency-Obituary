@@ -694,6 +694,8 @@ async function fetchPackageHealth(
       },
       github_url: githubUrl,
       npm_url: npmUrl,
+      is_direct: pkg.isDirect,
+      depended_by: pkg.dependedBy,
     };
 
     return { result, rateLimit: latestRateLimit };

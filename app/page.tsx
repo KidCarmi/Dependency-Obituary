@@ -275,7 +275,7 @@ export default function HomePage(): React.ReactElement {
                   </svg>
                 </div>
                 <p className="text-base mb-1">
-                  Drop your dependency file here
+                  Drop your dependency or lock file here
                 </p>
                 <p className="text-sm text-gray-600">or click to browse</p>
               </div>

@@ -290,16 +290,96 @@ export function parseVcpkgJson(content: string): Package[] {
   }
 }
 
+// ─── package-lock.json Parser (npm - with direct/transitive detection) ──────
+
+export function parsePackageLockJson(content: string, packageJsonContent?: string): Package[] {
+  try {
+    const lock: unknown = JSON.parse(content);
+    if (typeof lock !== "object" || lock === null) return [];
+
+    const lockObj = lock as Record<string, unknown>;
+    const packages: Package[] = [];
+
+    // Determine which packages are direct deps from package.json
+    const directDeps = new Set<string>();
+    if (packageJsonContent) {
+      try {
+        const pkgJson = JSON.parse(packageJsonContent) as Record<string, unknown>;
+        for (const field of ["dependencies", "devDependencies"] as const) {
+          const deps = pkgJson[field];
+          if (typeof deps === "object" && deps !== null) {
+            for (const name of Object.keys(deps as Record<string, unknown>)) {
+              directDeps.add(name);
+            }
+          }
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
+    // package-lock.json v2/v3 uses "packages" with path keys
+    const pkgs = lockObj.packages;
+    if (typeof pkgs === "object" && pkgs !== null) {
+      for (const [path, info] of Object.entries(pkgs as Record<string, unknown>)) {
+        if (!path || path === "") continue; // skip root entry
+        if (typeof info !== "object" || info === null) continue;
+
+        const infoObj = info as Record<string, unknown>;
+        const version = typeof infoObj.version === "string" ? infoObj.version : "0.0.0";
+
+        // Extract package name from path: "node_modules/@scope/pkg" → "@scope/pkg"
+        const name = path.replace(/^node_modules\//, "").replace(/.*node_modules\//, "");
+        if (!name || name.includes("node_modules")) continue;
+
+        const isDirect = directDeps.size > 0 ? directDeps.has(name) : undefined;
+
+        // For transitive deps, find which direct dep pulls them in
+        let dependedBy: string | undefined;
+        if (isDirect === false && directDeps.size > 0) {
+          // Check if any direct dep has this as a nested dependency
+          // Simple heuristic: check the path structure
+          const parts = path.split("node_modules/");
+          if (parts.length >= 3) {
+            dependedBy = parts[1].replace(/\/$/, "");
+          }
+        }
+
+        packages.push({ name, version, isDirect, dependedBy });
+      }
+    }
+
+    // package-lock.json v1 uses "dependencies" with nested structure
+    if (packages.length === 0 && lockObj.dependencies) {
+      const deps = lockObj.dependencies as Record<string, unknown>;
+      for (const [name, info] of Object.entries(deps)) {
+        if (typeof info !== "object" || info === null) continue;
+        const infoObj = info as Record<string, unknown>;
+        const version = typeof infoObj.version === "string" ? infoObj.version : "0.0.0";
+        const isDirect = directDeps.size > 0 ? directDeps.has(name) : undefined;
+        packages.push({ name, version, isDirect });
+      }
+    }
+
+    return packages;
+  } catch {
+    return [];
+  }
+}
+
 // ─── Auto-Detect Parser ────────────────────────────────────────────────────
 
 export function parseFile(
   filename: string,
-  content: string
+  content: string,
+  auxiliaryContent?: string
 ): { ecosystem: Ecosystem; packages: Package[] } {
   const lower = filename.toLowerCase();
 
   if (lower === "package.json" || lower.endsWith("/package.json")) {
     return { ecosystem: "npm", packages: parsePackageJson(content) };
+  }
+
+  if (lower === "package-lock.json" || lower.endsWith("/package-lock.json")) {
+    return { ecosystem: "npm", packages: parsePackageLockJson(content, auxiliaryContent) };
   }
 
   if (

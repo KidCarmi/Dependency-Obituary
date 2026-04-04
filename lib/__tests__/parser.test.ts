@@ -9,6 +9,7 @@ import {
   parseBuildGradle,
   parsePubspecYaml,
   parseVcpkgJson,
+  parsePackageLockJson,
   parseFile,
 } from "@/lib/parser";
 
@@ -433,6 +434,70 @@ dev_dependencies:
   });
 });
 
+// ─── parsePackageLockJson ────────────────────────────────────────────────────
+
+describe("parsePackageLockJson", () => {
+  it("parses v2/v3 lock file with direct/transitive detection", () => {
+    const lockContent = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "": { name: "my-app", version: "1.0.0" },
+        "node_modules/express": { version: "4.18.2" },
+        "node_modules/body-parser": { version: "1.20.2" },
+        "node_modules/express/node_modules/debug": { version: "2.6.9" },
+      },
+    });
+    const pkgJsonContent = JSON.stringify({
+      dependencies: { express: "^4.18.2" },
+    });
+
+    const result = parsePackageLockJson(lockContent, pkgJsonContent);
+    expect(result).toHaveLength(3);
+
+    const express = result.find((p) => p.name === "express");
+    expect(express?.isDirect).toBe(true);
+
+    const bodyParser = result.find((p) => p.name === "body-parser");
+    expect(bodyParser?.isDirect).toBe(false);
+
+    const debug = result.find((p) => p.name === "debug");
+    expect(debug?.isDirect).toBe(false);
+    expect(debug?.dependedBy).toBe("express");
+  });
+
+  it("parses without package.json (no direct/transitive info)", () => {
+    const lockContent = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "": {},
+        "node_modules/react": { version: "19.0.0" },
+      },
+    });
+
+    const result = parsePackageLockJson(lockContent);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("react");
+    expect(result[0].isDirect).toBeUndefined();
+  });
+
+  it("handles v1 lock file format", () => {
+    const lockContent = JSON.stringify({
+      lockfileVersion: 1,
+      dependencies: {
+        express: { version: "4.18.2" },
+        react: { version: "18.2.0" },
+      },
+    });
+
+    const result = parsePackageLockJson(lockContent);
+    expect(result).toHaveLength(2);
+  });
+
+  it("returns empty for invalid JSON", () => {
+    expect(parsePackageLockJson("nope")).toEqual([]);
+  });
+});
+
 // ─── parseVcpkgJson ─────────────────────────────────────────────────────────
 
 describe("parseVcpkgJson", () => {
@@ -535,6 +600,16 @@ describe("parseFile", () => {
     const result = parseFile("vcpkg.json", content);
     expect(result.ecosystem).toBe("vcpkg");
     expect(result.packages).toHaveLength(2);
+  });
+
+  it("detects package-lock.json by filename", () => {
+    const content = JSON.stringify({
+      lockfileVersion: 3,
+      packages: { "": {}, "node_modules/react": { version: "19.0.0" } },
+    });
+    const result = parseFile("package-lock.json", content);
+    expect(result.ecosystem).toBe("npm");
+    expect(result.packages).toHaveLength(1);
   });
 
   it("returns empty packages for unknown file with no content", () => {

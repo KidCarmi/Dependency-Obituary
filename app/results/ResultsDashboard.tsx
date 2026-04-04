@@ -292,7 +292,14 @@ function ResultRow({
         className="border-b border-gray-800/50 hover:bg-gray-900/30 cursor-pointer"
         onClick={onToggle}
       >
-        <td className="p-3 font-medium">{result.name}</td>
+        <td className="p-3 font-medium">
+          {result.name}
+          {result.is_direct === false && (
+            <span className="ml-2 text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded">
+              transitive{result.depended_by ? ` of ${result.depended_by}` : ""}
+            </span>
+          )}
+        </td>
         <td className="p-3 text-gray-500 font-mono text-xs">{result.version}</td>
         <td className="p-3">
           {result.health_score !== null ? (
