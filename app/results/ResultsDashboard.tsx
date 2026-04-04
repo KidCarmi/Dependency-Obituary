@@ -30,7 +30,7 @@ const RISK_LABELS: Record<RiskLevel, string> = {
   stable: "Stable",
   at_risk: "At Risk",
   critical: "Critical",
-  abandoned: "Abandoned",
+  abandoned: "Unmaintained",
   unknown: "Unknown",
 };
 

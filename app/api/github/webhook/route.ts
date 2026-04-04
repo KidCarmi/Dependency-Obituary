@@ -50,6 +50,15 @@ const RISK_EMOJI: Record<RiskLevel, string> = {
   unknown: "⚪",
 };
 
+const RISK_DISPLAY: Record<RiskLevel, string> = {
+  healthy: "healthy",
+  stable: "stable",
+  at_risk: "at_risk",
+  critical: "critical",
+  abandoned: "unmaintained",
+  unknown: "unknown",
+};
+
 function formatComment(
   results: HealthResult[],
   filename: string
@@ -65,7 +74,7 @@ function formatComment(
 
   let summary: string;
   if (critical.length > 0) {
-    summary = `⚠️ **${critical.length} critical/abandoned** package${critical.length > 1 ? "s" : ""} detected`;
+    summary = `⚠️ **${critical.length} critical/unmaintained** package${critical.length > 1 ? "s" : ""} detected`;
   } else if (atRisk.length > 0) {
     summary = `⚡ ${atRisk.length} package${atRisk.length > 1 ? "s" : ""} at risk`;
   } else {
@@ -77,7 +86,7 @@ function formatComment(
       const score =
         r.health_score !== null ? String(r.health_score) : "—";
       const emoji = RISK_EMOJI[r.risk_level];
-      return `| ${r.name} | ${r.version} | ${score} | ${emoji} ${r.risk_level} |`;
+      return `| ${r.name} | ${r.version} | ${score} | ${emoji} ${RISK_DISPLAY[r.risk_level]} |`;
     })
     .join("\n");
 

@@ -197,6 +197,8 @@ const COLORS = {
   orange: "\x1b[38;5;208m",
 };
 
+const RISK_DISPLAY = { healthy: "healthy", stable: "stable", at_risk: "at_risk", critical: "critical", abandoned: "unmaintained", unknown: "unknown" };
+
 function riskColor(risk) {
   const map = { healthy: COLORS.green, stable: COLORS.blue, at_risk: COLORS.yellow, critical: COLORS.orange, abandoned: COLORS.red, unknown: COLORS.gray };
   return map[risk] || COLORS.gray;
@@ -236,7 +238,7 @@ function printReport(results, belowThreshold) {
       : r.health_score !== null && r.health_score < threshold ? ` ${COLORS.red}FAIL${COLORS.reset}` : "";
 
     console.log(
-      `  ${padRight(r.name, 30)} ${COLORS.gray}${padRight(r.version, 12)}${COLORS.reset} ${sc}${padRight(score, 8)}${COLORS.reset} ${rc}${r.risk_level}${COLORS.reset}${fail}`
+      `  ${padRight(r.name, 30)} ${COLORS.gray}${padRight(r.version, 12)}${COLORS.reset} ${sc}${padRight(score, 8)}${COLORS.reset} ${rc}${RISK_DISPLAY[r.risk_level] || r.risk_level}${COLORS.reset}${fail}`
     );
   }
 

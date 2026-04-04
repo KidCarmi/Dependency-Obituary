@@ -7,11 +7,11 @@ const APP_SLUG = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || "dependency-obituary
 
 const SAMPLE_COMMENT = `## 🪦 Dependency Obituary
 
-⚠️ **2 critical/abandoned** packages detected
+⚠️ **2 critical/unmaintained** packages detected
 
 | Package | Version | Score | Status |
 |---|---|---|---|
-| moment | 2.30.1 | 19 | 🔴 abandoned |
+| moment | 2.30.1 | 19 | 🔴 unmaintained |
 | left-pad | 1.3.0 | 34 | 🟠 critical |
 | axios | 1.6.0 | 78 | 🔵 stable |
 | express | 4.18.2 | 85 | 🟢 healthy |

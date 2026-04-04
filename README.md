@@ -76,7 +76,7 @@ When a signal has no data (e.g. GitHub rate-limited), its weight is redistribute
 | 60-79 | Stable | Monitor annually |
 | 40-59 | At risk | Plan a migration |
 | 20-39 | Critical | Migrate this quarter |
-| 0-19 | Abandoned | Stop. Migrate now. |
+| 0-19 | Unmaintained | Stop. Migrate now. |
 
 ---
 
