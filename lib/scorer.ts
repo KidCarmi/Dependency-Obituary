@@ -152,8 +152,9 @@ export function calculateSecurityPenalty(unresolvedCves: number): number {
 export function isMaturePackage(signals: PackageSignals): boolean {
   // ── Hard gates (ALL paths) ──────────────────────────────────────────────
   if (signals.unresolvedCves > 0) return false;
-  // Note: GitHub's open_issues_count includes open PRs, so threshold must be generous
-  if (signals.openIssues !== null && signals.openIssues > 50) return false;
+  // Note: GitHub's open_issues_count includes open PRs + issues combined.
+  // Popular repos (google/uuid has 56) routinely exceed 50. Use 200 as ceiling.
+  if (signals.openIssues !== null && signals.openIssues > 200) return false;
 
   // Staleness guard: no commits in 5+ years = not audited, not mature
   if (signals.daysSinceLastCommit !== null && signals.daysSinceLastCommit > 1825) return false;

@@ -461,7 +461,7 @@ describe("isMaturePackage", () => {
     const signals: PackageSignals = {
       daysSinceLastCommit: 505,
       daysSinceLastRelease: 801,
-      openIssues: 5,
+      openIssues: 56,  // REAL: google/uuid has 56 (issues + PRs combined)
       closedIssues: null,
       contributorCount90d: null,
       prMergeVelocityDays: 5.8,

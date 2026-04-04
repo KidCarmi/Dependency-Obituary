@@ -27,8 +27,8 @@ export function buildCacheKey(
   version: string
 ): string {
   const majorVersion = version.split(".")[0] || "0";
-  // v12: zero mock data - real signals only
-  return `v12:dep:${ecosystem}:${name}:${majorVersion}`;
+  // v13: open_issues threshold 50 -> 200 (google/uuid has 56)
+  return `v13:dep:${ecosystem}:${name}:${majorVersion}`;
 }
 
 // ─── Dynamic TTL by Popularity ──────────────────────────────────────────────
