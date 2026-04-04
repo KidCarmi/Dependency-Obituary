@@ -37,7 +37,9 @@ A maintainer went dark 14 months ago. Issues are stacking up. The last PR sat op
 
 Drop your dependency file. Get back an honest health report for every dependency - scored on real signals, not opinions.
 
-**Supports:** `package.json` `requirements.txt` `Cargo.toml` `go.mod` `Gemfile` `composer.json` `build.gradle` `pubspec.yaml`
+**Supports:** `package.json` `package-lock.json` `requirements.txt` `Cargo.toml` `go.mod` `Gemfile` `composer.json` `build.gradle` `pubspec.yaml`
+
+**Lock file support:** Upload `package-lock.json` instead of `package.json` to see which dependencies are **direct** vs **transitive**. Transitive deps are labeled with their parent package (e.g. "transitive of express").
 
 **No account required. No install. No API key. Free forever.**
 
@@ -223,7 +225,7 @@ Browser                              Server
   |  [1] Parse file client-side        |
   |  [2] POST {ecosystem, packages}    |
   |  --------------------------------> |
-  |                                    |  [3] Check Redis cache (v7: keys)
+  |                                    |  [3] Check Redis cache (v14: keys)
   |                                    |  [4] Fetch registry + GitHub + deps.dev (batched, concurrent)
   |                                    |  [5] Score with null weight redistribution + mature detection
   |                                    |  [6] Cache non-degraded results (12-72h TTL)
@@ -236,7 +238,8 @@ Browser                              Server
 - Adaptive throttle reads `x-ratelimit-remaining` and adjusts delay
 - Null signal weights redistributed to signals with real data
 - Never caches degraded results - stale entries auto-deleted on read
-- Versioned cache keys (`v2:dep:...`) for algorithm changes
+- Versioned cache keys (`v14:dep:...`) for algorithm changes
+- Lock file parsing detects direct vs transitive dependencies (npm `package-lock.json`)
 - 194 tests (152 unit + 42 integration across all 9 ecosystems)
 - Zero fabricated data - all popularity signals are real (downloads, deps.dev versions, Repology distros, pub.dev scores)
 

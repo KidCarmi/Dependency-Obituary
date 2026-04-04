@@ -69,7 +69,7 @@ type FetchResult<T> =
 │       └── cron/refresh-popular/route.ts  # Nightly cache refresh
 ├── lib/
 │   ├── auth.ts        # Auth.js v5 config (GitHub OAuth, JWT)
-│   ├── parser.ts      # Client-side: package.json, requirements.txt, Cargo.toml, go.mod, Gemfile, composer.json, build.gradle, pubspec.yaml
+│   ├── parser.ts      # Client-side: package.json, package-lock.json, requirements.txt, Cargo.toml, go.mod, Gemfile, composer.json, build.gradle, pubspec.yaml
 │   ├── fetcher.ts     # Batched fetch + cache (npm, PyPI, crates.io, Go proxy, RubyGems)
 │   ├── scorer.ts      # Health Score -pure functions, null weight redistribution
 │   ├── cache.ts       # Upstash Redis wrapper, versioned keys (v2:dep:...)
@@ -92,7 +92,7 @@ type FetchResult<T> =
 |---|---|---|
 | `scorer.ts` | Pure scoring functions | API calls, Redis, side effects |
 | `fetcher.ts` | Data retrieval + cache | Scoring logic |
-| `parser.ts` | Parse file content | Network requests (client-side only) |
+| `parser.ts` | Parse file content (incl. lock files for direct/transitive detection) | Network requests (client-side only) |
 | `cache.ts` | Redis read/write | Business logic |
 | `api/*/route.ts` | Orchestrate fetcher + scorer | Direct API calls, business logic |
 
@@ -162,7 +162,7 @@ Run: `npm run test:integration` (42 integration tests against production)
 - **Go packages without `github.com/` paths** (e.g. `gopkg.in/`, `golang.org/`) get `data_confidence: "low"` - no GitHub signals available
 - **Maven has no download API** - maturity detection uses GitHub-only fallback
 - **GitHub `open_issues_count` includes PRs** - threshold set to 200 to accommodate popular repos
-- **Transitive dep detection** - npm `package-lock.json` supported (direct vs transitive from root entry). Other lock files planned.
+- **Transitive dep detection** - npm `package-lock.json` v2/v3 supported. Direct deps extracted from root `""` entry's dependencies/devDependencies. Transitive deps labeled with parent package via path nesting. `isDirect`/`dependedBy` are per-project attributes overlaid on cached results at read time (never stored in cache). Other lock files planned.
 
 ---
 
