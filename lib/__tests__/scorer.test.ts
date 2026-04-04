@@ -10,6 +10,7 @@ import {
   calculateSecurityPenalty,
   classifyRisk,
   scorePackage,
+  isMaturePackage,
 } from "@/lib/scorer";
 import type { PackageSignals } from "@/types";
 
@@ -441,5 +442,29 @@ describe("scorePackage", () => {
     expect(result.healthScore).toBeLessThanOrEqual(100);
     expect(result.breakdown.weightedSum).toBeGreaterThanOrEqual(0);
     expect(result.breakdown.weightedSum).toBeLessThanOrEqual(100);
+  });
+});
+
+// ─── Mature Package Detection ───────────────────────────────────────────────
+
+describe("isMaturePackage", () => {
+  it("detects google/uuid as mature (high downloads, 0 CVEs, few issues)", () => {
+    const signals: PackageSignals = {
+      daysSinceLastCommit: 505,
+      daysSinceLastRelease: 801,
+      openIssues: 5,
+      closedIssues: null,
+      contributorCount90d: null,
+      prMergeVelocityDays: 5.8,
+      weeklyDownloads: 100000,
+      weeklyDownloads12wAgo: null,
+      hasMultipleMaintainers: null,
+      unresolvedCves: 0,
+    };
+    expect(isMaturePackage(signals)).toBe(true);
+    const scored = scorePackage(signals);
+    expect(scored.breakdown.commitScore).toBe(75); // boosted from 0
+    expect(scored.breakdown.releaseScore).toBe(75); // boosted from 0
+    expect(scored.healthScore).toBeGreaterThanOrEqual(70);
   });
 });
